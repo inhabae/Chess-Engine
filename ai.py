@@ -16,11 +16,11 @@ Criteria:
 class ChessAI:
     def __init__(self, fen=chess.STARTING_FEN):
         self.board = chess.Board(fen)
-        self.turn = None
         self.fen = fen
         self.alphabeta_num = 0
         self.minmax_num = 0
-
+        self.next_move = None
+        
     def count_materials(self, player_color):
         '''
         Takes in the color of a player's pieces: 'white' or 'black',
@@ -101,22 +101,27 @@ class ChessAI:
             return 0
         if maximizing_player:
             max_eval = -INFINITY
+            candidate_move = None
             for move in self.board.legal_moves:
+                #print(move)
                 self.board.push(move)
-                self.alphabeta_num += 1
+                # self.alphabeta_num += 1
                 eval = self.alphabeta(depth - 1, False, alpha, beta)
                 self.board.pop()
+                if eval >= max_eval and depth:
+                    candidate_move = move
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
+            self.next_move = candidate_move
             return max_eval
 
         else:
             min_eval = INFINITY
             for move in self.board.legal_moves:
                 self.board.push(move)
-                self.alphabeta_num += 1
+                # self.alphabeta_num += 1
                 eval = self.alphabeta(depth - 1, True, alpha, beta)
                 self.board.pop()
                 min_eval = min(min_eval, eval)
@@ -124,3 +129,6 @@ class ChessAI:
                 if beta <= alpha:
                     break
             return min_eval
+    
+    def print_nextmove(self):
+        print(self.next_move)
