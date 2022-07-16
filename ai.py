@@ -1,5 +1,7 @@
 from json.encoder import INFINITY
 import chess
+import functools
+import random
 
 '''
 Given a FEN, the program returns the best move.
@@ -16,11 +18,8 @@ Criteria:
 class ChessAI:
     def __init__(self, fen=chess.STARTING_FEN):
         self.board = chess.Board(fen)
-        self.fen = fen
-        self.alphabeta_num = 0
-        self.minmax_num = 0
-        self.next_move = None
-        
+
+
     def count_materials(self, player_color):
         '''
         Takes in the color of a player's pieces: 'white' or 'black',
@@ -38,97 +37,89 @@ class ChessAI:
         return material 
             
 
-    def evaluate(self):
+    def evaluate(self, maximizing_color):
         white_eval = self.count_materials('white')
         black_eval = self.count_materials('black')
 
         evaluation = white_eval - black_eval
-        #print(f"turn: {self.board.turn} ; eval is {evaluation}")
-        return evaluation
-       
-    def update_board(self, fen):
-        '''for testing, update the board given fen'''
-        self.board = chess.Board(fen)
-
-    def minimax(self, depth, maximizing_player):
-        '''
-        Using minimax, the engine evaluates the position.
-        '''
-        # end of recursion, return the evaluation of the position   
-        if depth == 0:
-            return self.evaluate()
+        return evaluation if maximizing_color == 'white' else -1 * evaluation
+    
+    def minimax(self, depth, maximizing_player, maximizing_color):
+         
+        if depth == 0 or self.board.is_game_over():
+            return None, self.evaluate(maximizing_color)
         
-        if self.board.is_game_over() == True:
-            if self.board.is_check():
-                return -INFINITY
-            return 0 # draw
+        moves = list(self.board.legal_moves)
+        best_move = random.choice(moves)
 
         if maximizing_player:
             max_eval = -INFINITY
-            for move in self.board.legal_moves:
-                #print(f"board before:\n {self.board}")
+            for move in moves:
                 self.board.push(move)
-                self.minmax_num += 1 # comment out later
-                eval = self.minimax(depth - 1, False) # recursion
-                #print(f"board after:\n {self.board}")
-                #print(f"minimax eval is {eval}")
+                eval = self.minimax(depth - 1, False, maximizing_color)[1]
+
+                # if depth == 3:
+                #     print(f"Depth: {depth}; Move: {move}; eval: {eval}")
+                # if depth == 1:
+                #     print(f"\t\tDepth: {depth}; Move: {move}; eval: {eval}")
+                
                 self.board.pop()
-                max_eval = max(max_eval, eval)
-            #print(f"max eval is {max_eval}")
-            return max_eval
+                if eval > max_eval:
+                    best_move = move
+                    max_eval = eval
+            return best_move, max_eval
 
         else:
             min_eval = INFINITY
-            for move in self.board.legal_moves:
+            for move in moves:
                 self.board.push(move)
-                self.minmax_num+=1 # comment out later
-                eval = self.minimax(depth - 1, True)
-                self.board.pop()
-                min_eval = min(min_eval, eval)
-            return min_eval
+                eval = self.minimax(depth - 1, True, maximizing_color)[1]
+                
+                #print(f"Depth: {depth}; Move: {move}; eval: {eval}")
 
-    def alphabeta(self, depth, maximizing_player, alpha, beta):
+                self.board.pop()
+                if eval < min_eval:
+                    best_move = move
+                    min_eval = eval
+            return best_move, min_eval
+
+    def alphabeta(self, depth, maximizing_player, maximizing_color, alpha, beta):
         '''
         Using alpha beta pruning, the engine evaluates the position. 
         '''
-        # end of recursion, return the evaluation of the position   
-        if depth == 0:
-            return self.evaluate()
+        if depth == 0 or self.board.is_game_over():
+            return None, self.evaluate(maximizing_color)
         
-        if self.board.is_game_over() == True:
-            if self.board.is_check():
-                return -INFINITY
-            return 0
+        moves = list(self.board.legal_moves)
+        best_move = random.choice(moves)
+
         if maximizing_player:
             max_eval = -INFINITY
-            candidate_move = None
-            for move in self.board.legal_moves:
-                #print(move)
+            for move in moves:
                 self.board.push(move)
-                # self.alphabeta_num += 1
-                eval = self.alphabeta(depth - 1, False, alpha, beta)
+                eval = self.alphabeta(depth - 1, False, maximizing_color, alpha, beta)[1]
                 self.board.pop()
-                if eval >= max_eval and depth:
-                    candidate_move = move
-                max_eval = max(max_eval, eval)
+                if eval > max_eval:
+                    best_move = move
+                    max_eval = eval
+
                 alpha = max(alpha, eval)
                 if beta <= alpha:
                     break
-            self.next_move = candidate_move
-            return max_eval
+            return best_move, max_eval
 
         else:
             min_eval = INFINITY
-            for move in self.board.legal_moves:
+            for move in moves:
                 self.board.push(move)
-                # self.alphabeta_num += 1
-                eval = self.alphabeta(depth - 1, True, alpha, beta)
+                eval = self.alphabeta(depth - 1, True, maximizing_color, alpha, beta)[1]
+
                 self.board.pop()
-                min_eval = min(min_eval, eval)
+                if eval < min_eval:
+                    best_move = move
+                    min_eval = eval
                 beta = min(beta, eval)
                 if beta <= alpha:
                     break
-            return min_eval
-    
-    def print_nextmove(self):
-        print(self.next_move)
+            return best_move, min_eval
+
