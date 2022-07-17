@@ -57,12 +57,19 @@ chess_ai = ai.ChessAI()
 
 #chess_ai.board = chess.Board('7K/8/2kp4/8/3p4/3P4/8/5qr1 w - - 0 1')
 
-chess_ai.board = chess.Board('8/7K/2kp4/8/3p4/3P4/8/5qr1 b - - 1 1')
+chess_ai.board = chess.Board('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1')
 print(chess_ai.board)
 
 #chess_ai.alphabeta(10, True, -INFINITY, INFINITY)
-print(chess_ai.minimax(1, True))
+# print(chess_ai.minimax(1, True))
 
 # chess_ai.board.push(chess_ai.next_move) # the problem
 # print(chess_ai.next_move)
 
+#x = chess_ai.minimax(4, True, chess_ai.board.turn)[0]
+x = chess_ai.alphabeta(3, True, chess_ai.board.turn, -INFINITY, INFINITY)[0]
+
+
+print(f"best move: {x}; move #'s: {chess_ai.ab_num}")
+#print("moves with minimax 97910; moves with ab 5234")
+#print(f"moves with minimax {chess_ai.minimax_num}; moves with ab {chess_ai.ab_num}")

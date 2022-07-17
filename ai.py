@@ -1,7 +1,7 @@
 from json.encoder import INFINITY
 import chess
-import functools
 import random
+from collections import OrderedDict
 
 '''
 Given a FEN, the program returns the best move.
@@ -19,6 +19,9 @@ class ChessAI:
     def __init__(self, fen=chess.STARTING_FEN):
         self.board = chess.Board(fen)
 
+        self.minimax_num = 0 # for testing
+        self.ab_num = 0 # for testing
+
 
     def count_materials(self, player_color):
         '''
@@ -28,24 +31,23 @@ class ChessAI:
         material = 0
         bf = self.board.board_fen()
 
-        if player_color == 'white':
+        if player_color == chess.WHITE:
             material = 9 * bf.count('Q') + 5 * bf.count('R') + 3 * bf.count('B') + 3 * bf.count('N') + bf.count('P') 
 
-        elif player_color == 'black':
+        elif player_color == chess.BLACK:
             material = 9 * bf.count('q') + 5 * bf.count('r') + 3 * bf.count('b') + 3 * bf.count('n') + bf.count('p') 
 
         return material 
             
 
     def evaluate(self, maximizing_color):
-        white_eval = self.count_materials('white')
-        black_eval = self.count_materials('black')
+        white_eval = self.count_materials(chess.WHITE)
+        black_eval = self.count_materials(chess.BLACK)
 
         evaluation = white_eval - black_eval
-        return evaluation if maximizing_color == 'white' else -1 * evaluation
+        return evaluation if maximizing_color == chess.WHITE else -1 * evaluation
     
     def minimax(self, depth, maximizing_player, maximizing_color):
-         
         if depth == 0 or self.board.is_game_over():
             return None, self.evaluate(maximizing_color)
         
@@ -55,14 +57,12 @@ class ChessAI:
         if maximizing_player:
             max_eval = -INFINITY
             for move in moves:
+                self.minimax_num += 1
                 self.board.push(move)
                 eval = self.minimax(depth - 1, False, maximizing_color)[1]
 
-                # if depth == 3:
-                #     print(f"Depth: {depth}; Move: {move}; eval: {eval}")
-                # if depth == 1:
-                #     print(f"\t\tDepth: {depth}; Move: {move}; eval: {eval}")
-                
+                # print(f"Eval: {eval}, Move: {move}")
+
                 self.board.pop()
                 if eval > max_eval:
                     best_move = move
@@ -74,8 +74,6 @@ class ChessAI:
             for move in moves:
                 self.board.push(move)
                 eval = self.minimax(depth - 1, True, maximizing_color)[1]
-                
-                #print(f"Depth: {depth}; Move: {move}; eval: {eval}")
 
                 self.board.pop()
                 if eval < min_eval:
@@ -90,12 +88,15 @@ class ChessAI:
         if depth == 0 or self.board.is_game_over():
             return None, self.evaluate(maximizing_color)
         
-        moves = list(self.board.legal_moves)
+        moves = self.order_moves()
+        #moves = list(self.board.legal_moves)
+
         best_move = random.choice(moves)
 
         if maximizing_player:
             max_eval = -INFINITY
             for move in moves:
+                self.ab_num += 1
                 self.board.push(move)
                 eval = self.alphabeta(depth - 1, False, maximizing_color, alpha, beta)[1]
                 self.board.pop()
@@ -111,6 +112,7 @@ class ChessAI:
         else:
             min_eval = INFINITY
             for move in moves:
+                self.ab_num += 1
                 self.board.push(move)
                 eval = self.alphabeta(depth - 1, True, maximizing_color, alpha, beta)[1]
 
@@ -123,3 +125,34 @@ class ChessAI:
                     break
             return best_move, min_eval
 
+    def order_moves(self):
+        moves = list(self.board.legal_moves)
+        move_score = 0
+        ordered_moves = {}
+
+        for move in moves:
+            move_piece = self.board.piece_type_at(move.from_square)
+            capture_piece = self.board.piece_type_at(move.to_square)
+            
+            if capture_piece != None:
+                move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
+            
+            if (move_piece == chess.PAWN and chess.square_rank(move.to_square) == 7):
+                move_score += self._get_piece_value(move.promotion)
+
+            
+            # end of ordering
+            ordered_moves[move] = move_score
+            sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
+
+        return list(sorted_orders.keys())
+        
+    def _get_piece_value(self, piece):
+        if piece == chess.PAWN:
+            return 1
+        elif piece == chess.KNIGHT or chess.BISHOP:
+            return 3
+        elif piece == chess.ROOK:
+            return 5
+        elif piece == chess.QUEEN:
+            return 9
