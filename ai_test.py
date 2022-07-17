@@ -73,3 +73,4 @@ x = chess_ai.alphabeta(3, True, chess_ai.board.turn, -INFINITY, INFINITY)[0]
 print(f"best move: {x}; move #'s: {chess_ai.ab_num}")
 #print("moves with minimax 97910; moves with ab 5234")
 #print(f"moves with minimax {chess_ai.minimax_num}; moves with ab {chess_ai.ab_num}")
+

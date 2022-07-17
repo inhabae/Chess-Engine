@@ -21,6 +21,7 @@ class ChessAI:
 
         self.minimax_num = 0 # for testing
         self.ab_num = 0 # for testing
+        self.s_flag = 0
 
 
     def count_materials(self, player_color):
@@ -86,7 +87,8 @@ class ChessAI:
         Using alpha beta pruning, the engine evaluates the position. 
         '''
         if depth == 0 or self.board.is_game_over():
-            return None, self.evaluate(maximizing_color)
+            val = self.evaluate(maximizing_color)
+            return None, self.search_all_captures(val, val, maximizing_color)
         
         moves = self.order_moves()
         #moves = list(self.board.legal_moves)
@@ -156,3 +158,25 @@ class ChessAI:
             return 5
         elif piece == chess.QUEEN:
             return 9
+
+    def search_all_captures(self, alpha, beta, maximizing_color):
+        eval = self.evaluate(maximizing_color)
+
+        self.s_flag += 1
+        print(f"s flag is {self.s_flag}")
+
+        if eval >= beta:
+            return beta
+        alpha = max(alpha, eval)
+
+        for move in list(self.board.legal_moves):
+            if self.board.is_capture(move):
+                self.board.push(move)
+                eval = -1 * self.search_all_captures(-beta, -alpha, maximizing_color)
+                self.board.pop()
+
+                if eval >= beta:
+                    return beta
+                alpha = max(alpha, eval)
+
+        return alpha

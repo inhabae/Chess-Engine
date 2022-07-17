@@ -18,7 +18,7 @@ ai_chess = ai.ChessAI()
 #     print(ai_chess.board)
 
 while True:
-    ai_chess.board.push(ai_chess.alphabeta(3, True, 'white', -INFINITY, INFINITY)[0]) # computer will be white
+    ai_chess.board.push(ai_chess.alphabeta(1, True, ai_chess.board.turn, -INFINITY, INFINITY)[0]) # computer will be white
     print(ai_chess.board)
     while True:
         try:
