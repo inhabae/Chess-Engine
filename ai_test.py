@@ -1,4 +1,5 @@
 from json.encoder import INFINITY
+from operator import xor
 import ai as ai
 import chess
 
@@ -57,8 +58,8 @@ chess_ai = ai.ChessAI()
 
 #chess_ai.board = chess.Board('7K/8/2kp4/8/3p4/3P4/8/5qr1 w - - 0 1')
 
-chess_ai.board = chess.Board('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1')
-print(chess_ai.board)
+# chess_ai.board = chess.Board('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1')
+# print(chess_ai.board)
 
 #chess_ai.alphabeta(10, True, -INFINITY, INFINITY)
 # print(chess_ai.minimax(1, True))
@@ -67,10 +68,56 @@ print(chess_ai.board)
 # print(chess_ai.next_move)
 
 #x = chess_ai.minimax(4, True, chess_ai.board.turn)[0]
-x = chess_ai.alphabeta(3, True, chess_ai.board.turn, -INFINITY, INFINITY)[0]
+# x = chess_ai.alphabeta(3, True, chess_ai.board.turn, -INFINITY, INFINITY)[0]
 
 
-print(f"best move: {x}; move #'s: {chess_ai.ab_num}")
+# print(f"best move: {x}; move #'s: {chess_ai.ab_num}")
 #print("moves with minimax 97910; moves with ab 5234")
 #print(f"moves with minimax {chess_ai.minimax_num}; moves with ab {chess_ai.ab_num}")
 
+# chess_ai.board = chess.Board('6kn/5ppp/8/8/n7/8/5PPP/3Q2K1 w - - 0 1')
+# best_move = chess_ai.alphabeta(1, True, chess_ai.board.turn, -INFINITY, INFINITY)[0]
+
+# print(best_move)
+
+# chess_ai.board = chess.Board('r1bqkbnr/p2pp1p1/1pp2p1p/8/1n2N3/4P3/PPPP1PPP/RNBQKB1R w KQkq - 1 7')
+# best_move = chess_ai.alphabeta(5, True, chess_ai.board.turn, -INFINITY, INFINITY)[0]
+# print(best_move)
+
+
+# in game 4
+chess_ai.board = chess.Board('8/p1p3k1/Nb4p1/8/5RK1/7N/PP1r1P2/8 w - - 7 33')
+# best_move = chess_ai.alphabeta(4)[0]
+# print(best_move)
+
+# knight_mask = chess_ai.board.occupied_co[chess_ai.board.turn] & chess_ai.board.knights 
+# print(knight_mask)
+
+# if knight_mask & chess.BB_FILE_A:
+#     print("yes in a")
+
+# if knight_mask & chess.BB_FILE_B:
+#     print("yes in b")
+
+
+# if knight_mask:
+#     knight_edge = chess.msb(knight_mask)
+
+# print(knight_edge)
+
+safe_qs_sq = [
+            chess.A1, chess.B1, chess.C1,
+            chess.A8, chess.B8, chess.C8
+        ]
+safe_ks_sq = [
+    chess.G1, chess.H1,
+    chess.G8, chess.H8
+]
+
+
+chess_ai.board = chess.Board('r1bqkbnr/ppp2ppp/2np4/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4')
+
+# rook_mask = chess_ai.board.occupied_co[chess_ai.board.turn] & chess_ai.board.rooks
+# print(rook_mask ^ chess.BB_FILE_A)
+best_move = chess_ai.alphabeta(4)[0]
+print(best_move)
