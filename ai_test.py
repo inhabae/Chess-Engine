@@ -86,7 +86,7 @@ chess_ai = ai.ChessAI()
 
 
 # in game 4
-chess_ai.board = chess.Board('8/p1p3k1/Nb4p1/8/5RK1/7N/PP1r1P2/8 w - - 7 33')
+#chess_ai.board = chess.Board('8/p1p3k1/Nb4p1/8/5RK1/7N/PP1r1P2/8 w - - 7 33')
 # best_move = chess_ai.alphabeta(4)[0]
 # print(best_move)
 
@@ -105,19 +105,86 @@ chess_ai.board = chess.Board('8/p1p3k1/Nb4p1/8/5RK1/7N/PP1r1P2/8 w - - 7 33')
 
 # print(knight_edge)
 
-safe_qs_sq = [
-            chess.A1, chess.B1, chess.C1,
-            chess.A8, chess.B8, chess.C8
-        ]
-safe_ks_sq = [
-    chess.G1, chess.H1,
-    chess.G8, chess.H8
-]
+# safe_qs_sq = [
+#             chess.A1, chess.B1, chess.C1,
+#             chess.A8, chess.B8, chess.C8
+#         ]
+# safe_ks_sq = [
+#     chess.G1, chess.H1,
+#     chess.G8, chess.H8
+# ]
 
 
-chess_ai.board = chess.Board('r1bqkbnr/ppp2ppp/2np4/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4')
+# chess_ai.board = chess.Board('r1bqkbnr/ppp2ppp/2np4/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4')
 
-# rook_mask = chess_ai.board.occupied_co[chess_ai.board.turn] & chess_ai.board.rooks
-# print(rook_mask ^ chess.BB_FILE_A)
-best_move = chess_ai.alphabeta(4)[0]
-print(best_move)
+# # rook_mask = chess_ai.board.occupied_co[chess_ai.board.turn] & chess_ai.board.rooks
+# # print(rook_mask ^ chess.BB_FILE_A)
+# chess_ai.board = chess.Board('5k1n/4pppp/q7/8/4r3/1N2P3/5PPP/5RKQ w - - 0 1')
+
+# best_move, eval = chess_ai.alphabeta(4)
+# print(f"best move: {best_move}, eval: {eval}")
+
+
+
+'''Thorough Testing of Evaluate():'''
+# chess_ai.board = chess.Board('5k1n/4pppp/q7/8/4r3/1N2P3/5PPP/5RKQ w - - 0 1')
+# print(f"eval: {chess_ai.evaluate()} -> 0") 
+
+# chess_ai.board = chess.Board('5k1n/4pppp/q7/2N5/4r3/4P3/5PPP/5RKQ b - - 1 1')
+# print(f"eval: {chess_ai.evaluate()} -> 0") 
+# chess_ai.board = chess.Board('5k1n/4pppp/q7/2N5/4r3/4P3/5PPP/5RKQ b - - 1 1')
+# print(f"eval: {chess_ai.evaluate()} -> 0") 
+
+# chess_ai.board = chess.Board('5k1n/4pppp/q7/2N5/8/4P3/5PPP/5RKQ b - - 1 1')
+# print(f"eval: {chess_ai.evaluate()} -> 0") 
+# chess_ai.board = chess.Board('5k1n/4pppp/q7/2N5/8/4P3/5PPP/5RKQ w - - 1 1')
+# print(f"eval: {chess_ai.evaluate()} -> 0") 
+
+# # black can capture a knight for free
+# chess_ai.board = chess.Board('5krn/4pppp/1q6/2N5/8/4P3/5PPP/5RKQ b - - 1 1')
+# move, eval = chess_ai.alphabeta(4)
+# print(f"Move {move} has an eval of {eval}")
+
+# # if white turn, knight forks and wins a queen
+# chess_ai.board = chess.Board('5krn/4pppp/1q6/2N5/8/4P3/5PPP/5RKQ w - - 1 1')
+# move, eval = chess_ai.alphabeta(4)
+# print(f"Move {move} has an eval of {eval}")
+
+# # if white turn, mate in 2
+# chess_ai.board = chess.Board('3rrkqn/4pppp/8/2N1N3/8/4P3/5PPP/5RKQ w - - 1 1')
+# move, eval = chess_ai.alphabeta(4)
+# print(f"Move {move} has an eval of {eval}")
+
+# if black turn, avoid mate in 2 and give eval of +2
+# chess_ai.board = chess.Board('3rrkqn/4pppp/8/2N1N3/8/4P3/5PPP/5RKQ b - - 1 1')
+# move, eval = chess_ai.alphabeta(4)
+# print(f"Move {move} has an eval of {eval}")
+
+# # testing mate eval:
+# chess_ai.board = chess.Board('3R2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1')
+# move, eval = chess_ai.alphabeta(2)
+# print(f"Move {move} has an eval of {eval}")
+
+# chess_ai.board = chess.Board('3R2k1/5ppp/8/8/8/8/5PPP/6K1 w - - 0 1')
+# move, eval = chess_ai.alphabeta(2)
+# print(f"Move {move} has an eval of {eval}")
+
+# checks if best move is updated correctly
+# print()
+# chess_ai.board = chess.Board('2r2bkb/2r1pppp/2q5/2r5/8/2R5/2Q1PPPP/2R2BKB w - - 0 1')
+# move, eval = chess_ai.alphabeta(1)
+# print(f"Move {move} has an eval of {eval}, accurate is -5")
+
+# # check if the engine searches until theres no more good captures
+# chess_ai.board = chess.Board('2r2bkb/2r1pppp/2q5/2r5/8/2R5/2Q1PPPP/2R2BKB w - - 0 1')
+# move, eval = chess_ai.alphabeta(1)
+# print(f"Move {move} has an eval of {eval}, accurate is -5")
+
+# check if it picks up mate in 1
+# chess_ai.board = chess.Board('4k3/1RR5/8/8/8/8/8/1K6 w - - 0 1')
+# move, eval = chess_ai.alphabeta(1)
+# print(f"Move {move} has an eval of {eval}")
+
+chess_ai.board = chess.Board('2Q2b2/p1p1kprp/5q1B/2p1p3/8/5N2/PPP2P1P/3RK2R w K - 4 18')
+move, eval = chess_ai.alphabeta(4)
+print(f"Move {move} has an eval of {eval}")

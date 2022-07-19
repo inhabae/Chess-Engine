@@ -4,6 +4,7 @@ import random
 import chess
 
 ai_chess = ai.ChessAI()
+ai_chess.board = chess.Board()
 
 """for testing chess module"""
 # for move in range(100):
@@ -35,9 +36,13 @@ else:
 
 
 while True:
-    ai_chess.board.push(ai_chess.alphabeta(4, True, ai_chess.board.turn, -INFINITY, INFINITY)[0]) # computer will be white
+    game_over = False
+    ai_chess.board.push(ai_chess.alphabeta(4)[0]) # computer will be white
     print(ai_chess.board)
     while True:
+        if ai_chess.board.is_game_over():
+            game_over = True
+            break   
         try:
             user_move = input("Enter ur move: ")
             ai_chess.board.push_san(user_move)
@@ -49,3 +54,6 @@ while True:
         else: 
             ai_chess.move_number += 1 # not accurate
             break
+
+    if game_over:
+        break

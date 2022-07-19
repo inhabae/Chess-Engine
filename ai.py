@@ -1,7 +1,8 @@
 from json.encoder import INFINITY
+from optparse import Values
 import chess
 import random
-from collections import OrderedDict
+
 
 '''
 Given a FEN, the program returns the best move.
@@ -24,156 +25,94 @@ class ChessAI:
         self.ab_num = 0 # for testing
         self.s_flag = 0
 
+        self.value_w_pawn = {}
+        self.value_b_pawn = {} 
 
-    def count_materials(self, player_color):
+        self.value_knight = {}
+        self.value_bishop = {}
+        self.value_w_rook = {}
+        self.value_b_rook = {}
+
+        self.value_queen = {}
+        self.value_w_king = {}
+        self.value_b_king = {}
+
+        self.occupied_squares = []
+        
+        self.initialize_table()
+
+    def count_materials(self):
         '''
         Takes in the color of a player's pieces: 'white' or 'black',
         Returns the total value of materials of the player.
         '''
         material = 0
-        bf = self.board.board_fen()
 
-        if player_color == chess.WHITE:
-            material = 9 * bf.count('Q') + 5 * bf.count('R') + 3 * bf.count('B') + 3 * bf.count('N') + bf.count('P') 
+        for square in chess.SQUARES:
+            if self.board.piece_at(square):
+                piece_color = self.board.piece_at(square).color
+                piece_type = self.board.piece_at(square).piece_type
+                if piece_type == chess.PAWN:
+                    material += (105 + self.value_w_pawn[square]) if piece_color == chess.WHITE else (-105 - self.value_b_pawn[square])
+                elif piece_type == chess.KNIGHT:
+                    material += (320 + self.value_knight[square]) if piece_color == chess.WHITE else (-320 - self.value_knight[square])
+                elif piece_type == chess.BISHOP:
+                    material += (330 + self.value_bishop[square]) if piece_color == chess.WHITE else (-330 - self.value_bishop[square])
+                elif piece_type == chess.ROOK:
+                    material += (500 + self.value_w_rook[square]) if piece_color == chess.WHITE else (-500 - self.value_b_rook[square])
+                elif piece_type == chess.QUEEN:
+                    material += (900 + self.value_queen[square]) if piece_color == chess.WHITE else (-900 - self.value_queen[square])
+                elif piece_type == chess.KING:
+                    material += 20000 + self.value_w_king[square] if piece_color == chess.WHITE else (-20000 - self.value_b_king[square])
+        return material
 
-        elif player_color == chess.BLACK:
-            material = 9 * bf.count('q') + 5 * bf.count('r') + 3 * bf.count('b') + 3 * bf.count('n') + bf.count('p') 
-
-        return material 
-            
-
-    def evaluate(self, maximizing_color):
+    def evaluate(self):
+        '''
+        Return an evaluation for the player with a turn.
+        If the player is winning +, if losing -.
+        '''
         # material diff evaluation
-        white_eval = self.count_materials(chess.WHITE)
-        black_eval = self.count_materials(chess.BLACK)
+        evaluation = self.count_materials() # white - black
 
-        # castle around move 10
-        safe_qs_sq = [
-            chess.A1, chess.B1, chess.C1,
-            chess.A8, chess.B8, chess.C8
-        ]
-        safe_ks_sq = [
-            chess.G1, chess.H1,
-            chess.G8, chess.H8
-        ]
-        
-        rook_mask = self.board.occupied_co[maximizing_color] & self.board.rooks
-    
-        if self.board.king(maximizing_color) in safe_ks_sq and not(rook_mask & chess.BB_FILE_H):
-            if maximizing_color == chess.WHITE:
-                white_eval += 1 if self.move_number < 10 else 1.5
-            else: 
-                black_eval += 1 if self.move_number < 10 else 1.5
-        
-        # elif self.board.king(maximizing_color) in safe_qs_sq and not(rook_mask & chess.BB_FILE_A):
-        #     if maximizing_color == chess.WHITE:
-        #         white_eval += 0.99 if self.move_number < 10 else 1.5
-        #     else: 
-        #         black_eval += 0.99 if self.move_number < 10 else 1.5
-        
+        return evaluation if self.board.turn == chess.WHITE else -evaluation
 
-        # knight on edge is bad
-        knight_mask = self.board.occupied_co[maximizing_color] & self.board.knights
-        if knight_mask & chess.BB_FILE_A or knight_mask & chess.BB_FILE_H:
-            if maximizing_color == chess.WHITE:
-                white_eval -= 0.9
-            else:
-                black_eval -= 0.9
-            
-
-        evaluation = white_eval - black_eval
-        return evaluation if maximizing_color == chess.WHITE else -1 * evaluation
-    
-    def minimax(self, depth, maximizing_player, maximizing_color):
-        if depth == 0 or self.board.is_game_over():
-            return None, self.evaluate(maximizing_color)
-        
-        moves = list(self.board.legal_moves)
-        best_move = random.choice(moves)
-
-        if maximizing_player:
-            max_eval = -INFINITY
-            for move in moves:
-                self.minimax_num += 1
-                self.board.push(move)
-                eval = self.minimax(depth - 1, False, maximizing_color)[1]
-
-                # print(f"Eval: {eval}, Move: {move}")
-
-                self.board.pop()
-                if eval > max_eval:
-                    best_move = move
-                    max_eval = eval
-            return best_move, max_eval
-
-        else:
-            min_eval = INFINITY
-            for move in moves:
-                self.board.push(move)
-                eval = self.minimax(depth - 1, True, maximizing_color)[1]
-
-                self.board.pop()
-                if eval < min_eval:
-                    best_move = move
-                    min_eval = eval
-            return best_move, min_eval
-
-    def alphabeta(self, depth, maximizing_player=True, maximizing_color=chess.WHITE, alpha=-INFINITY, beta=INFINITY):
+    def alphabeta(self, depth, alpha=-INFINITY, beta=INFINITY):
         '''
         Using alpha beta pruning, the engine evaluates the position. 
         '''
         if self.board.is_game_over():
-            eval =  INFINITY if maximizing_player != True else -INFINITY
+            eval =  -INFINITY if self.board.turn != True else INFINITY
             return None, eval
 
         if depth == 0:
-            val = self.evaluate(maximizing_color)
-            return None, self.search_all_captures(val, val, maximizing_color)
+            val = self.evaluate()
+            #return None, val
+            return None, self.search_all_captures(val, beta)
         
         moves = self.order_moves()
-        #moves = list(self.board.legal_moves)
-
         best_move = random.choice(moves)
 
-        if maximizing_player:
-            max_eval = -INFINITY
-            for move in moves:
-                self.ab_num += 1
-                self.board.push(move)
-                eval = self.alphabeta(depth - 1, False, maximizing_color, alpha, beta)[1]
 
+        for move in moves:
+            self.board.push(move)
+            eval = -self.alphabeta(depth - 1, -beta, -alpha)[1]
 
-                # # for checking certain moves
-                # if depth == 4:
-                #     print(f"move {move} has an eval of {eval}")
+            #for checking certain moves
+            if depth == 4:
+                print(f"current best move {best_move}")
+                print(f"move {move} has an eval of {eval}")
 
-                self.board.pop()
-                if eval > max_eval:
-                    best_move = move
-                    max_eval = eval
+            self.board.pop()
 
-                alpha = max(alpha, eval)
-                if beta <= alpha:
-                    break
-            return best_move, max_eval
+            if eval > alpha:
+                best_move = move
 
-        else:
-            min_eval = INFINITY
-            for move in moves:
-                self.ab_num += 1
-                self.board.push(move)
-                eval = self.alphabeta(depth - 1, True, maximizing_color, alpha, beta)[1]
-
-                #print(f"\tmove {move} has eval of {eval}")
-
-                self.board.pop()
-                if eval < min_eval:
-                    best_move = move
-                    min_eval = eval
-                beta = min(beta, eval)
-                if beta <= alpha:
-                    break
-            return best_move, min_eval
+            if eval >= beta:
+                return best_move, beta
+            
+            alpha = max(alpha, eval)
+                
+        return best_move, alpha
 
     def order_moves(self):
         moves = list(self.board.legal_moves)
@@ -194,6 +133,8 @@ class ChessAI:
             if self.board.is_castling(move):
                 move_score += 5
             
+            if self.board.gives_check(move):
+                move_score += 20
             # end of ordering
             ordered_moves[move] = move_score
             sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
@@ -210,30 +151,149 @@ class ChessAI:
         elif piece == chess.QUEEN:
             return 9
 
-    def search_all_captures(self, alpha, beta, maximizing_color):
-        eval = self.evaluate(maximizing_color)
+    def search_all_captures(self, alpha, beta):
+        eval = self.evaluate()
 
         if eval >= beta:
             return beta
         alpha = max(alpha, eval)
 
-        for move in list(self.board.legal_moves):
+        moves = list(self.board.legal_moves)
+
+        for move in moves:
             if self.board.is_capture(move):
                 self.board.push(move)
-                eval = -1 * self.search_all_captures(-beta, -alpha, maximizing_color)
+                eval = -1 * self.search_all_captures(-beta, -alpha)
                 self.board.pop()
 
                 if eval >= beta:
                     return beta
                 alpha = max(alpha, eval)
 
-            elif self.board.is_check(move):
-                self.board.push(move)
-                eval = -1 * self.search_all_captures(-beta, -alpha, maximizing_color)
-                self.board.pop()
+            # elif self.board.gives_check(move):
+            #     self.board.push(move)
+            #     eval = -1 * self.search_all_captures(-beta, -alpha)
+            #     self.board.pop()
 
-                if eval >= beta:
-                    return beta
-                alpha = max(alpha, eval)
+            #     if eval >= beta:
+            #         return beta
+            #     alpha = max(alpha, eval)
 
         return alpha
+
+
+    def initialize_table(self):
+        pawn_table_white = [
+            0,  0,  0,  0,  0,  0,  0,  0,
+            5, 10, 10,-20,-20, 10, 10,  5,
+            5, -5,-10,  0,  0,-10, -5,  5,
+            0,  0,  0, 20, 20,  0,  0,  0,
+            5,  5, 10, 25, 25, 10,  5,  5,
+            10, 10, 20, 30, 30, 20, 10, 10,
+            50, 50, 50, 50, 50, 50, 50, 50,
+            0,  0,  0,  0,  0,  0,  0,  0
+        ]
+
+        pawn_table_black = [
+            0,  0,  0,  0,  0,  0,  0,  0,
+            50, 50, 50, 50, 50, 50, 50, 50,
+            10, 10, 20, 30, 30, 20, 10, 10,
+            5,  5, 10, 25, 25, 10,  5,  5,
+            0,  0,  0, 20, 20,  0,  0,  0,
+            5, -5,-10,  0,  0,-10, -5,  5,
+            5, 10, 10,-20,-20, 10, 10,  5,
+            0,  0,  0,  0,  0,  0,  0,  0
+        ]
+        knight_tables = [
+            -50,-40,-30,-30,-30,-30,-40,-50,
+            -40,-20,  0,  0,  0,  0,-20,-40,
+            -30,  0, 10, 15, 15, 10,  0,-30,
+            -30,  5, 15, 20, 20, 15,  5,-30,
+            -30,  0, 15, 20, 20, 15,  0,-30,
+            -30,  5, 10, 15, 15, 10,  5,-30,
+            -40,-20,  0,  5,  5,  0,-20,-40,
+            -50,-40,-30,-30,-30,-30,-40,-50,
+        ]
+        bishop_tables = [
+            -20,-10,-10,-10,-10,-10,-10,-20,
+            -10,  0,  0,  0,  0,  0,  0,-10,
+            -10,  0,  5, 10, 10,  5,  0,-10,
+            -10,  5,  5, 10, 10,  5,  5,-10,
+            -10,  0, 10, 10, 10, 10,  0,-10,
+            -10, 10, 10, 10, 10, 10, 10,-10,
+            -10,  5,  0,  0,  0,  0,  5,-10,
+            -20,-10,-10,-10,-10,-10,-10,-20,
+        ]
+        rook_table_white = [
+            0,  0,  0,  5,  5,  0,  0,  0,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            5, 10, 10, 10, 10, 10, 10,  5,
+            0,  0,  0,  0,  0,  0,  0,  0
+        ]
+        rook_table_black = [
+            0,  0,  0,  0,  0,  0,  0,  0,
+            5, 10, 10, 10, 10, 10, 10,  5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            0,  0,  0,  5,  5,  0,  0,  0
+        ]
+
+        queen_tables = [
+            -20,-10,-10, -5, -5,-10,-10,-20,
+            -10,  0,  0,  0,  0,  0,  0,-10,
+            -10,  0,  5,  5,  5,  5,  0,-10,
+             -5,  0,  5,  5,  5,  5,  0, -5,
+              0,  0,  5,  5,  5,  5,  0, -5,
+            -10,  5,  5,  5,  5,  5,  0,-10,
+            -10,  0,  5,  0,  0,  0,  0,-10,
+            -20,-10,-10, -5, -5,-10,-10,-20
+        ]
+
+        king_tables_white = [
+           20, 30, 10,  0,  0, 10, 30, 20,
+           20, 20,  0,  0,  0,  0, 20, 20,
+           -10,-20,-20,-20,-20,-20,-20,-10,
+           -20,-30,-30,-40,-40,-30,-30,-20,
+           -30,-40,-40,-50,-50,-40,-40,-30,
+           -30,-40,-40,-50,-50,-40,-40,-30,
+           -30,-40,-40,-50,-50,-40,-40,-30,
+           -30,-40,-40,-50,-50,-40,-40,-30
+        ]
+
+        king_tables_black = [
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -20,-30,-30,-40,-40,-30,-30,-20,
+            -10,-20,-20,-20,-20,-20,-20,-10,
+            20, 20,  0,  0,  0,  0, 20, 20,
+            20, 30, 10,  0,  0, 10, 30, 20
+        ]
+
+        for square in chess.SQUARES:
+            self.value_w_pawn[square] = pawn_table_white[square]
+            self.value_b_pawn[square] = pawn_table_black[square]
+
+            self.value_knight[square] = knight_tables[square]
+            self.value_bishop[square] = bishop_tables[square]
+
+            self.value_w_rook[square] = rook_table_white[square]
+            self.value_b_rook[square] = rook_table_black[square]
+
+            self.value_queen[square] = queen_tables[square]
+            self.value_w_king[square] = king_tables_white[square]
+            self.value_b_king[square] = king_tables_black[square]
+
+    def check_endgame(self):
+        # if 'q' not in self.board.board_fen() and 'Q' not in self.board.board_fen():
+        #     pass
+        # elif 'q' not in self.board.board_fen() 
+        pass
