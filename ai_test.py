@@ -177,7 +177,7 @@ chess_ai = ai.ChessAI()
 
 # # check if the engine searches until theres no more good captures
 # chess_ai.board = chess.Board('2r2bkb/2r1pppp/2q5/2r5/8/2R5/2Q1PPPP/2R2BKB w - - 0 1')
-# move, eval = chess_ai.alphabeta(1)
+# move, eval = chess_ai.alphabeta(4)
 # print(f"Move {move} has an eval of {eval}, accurate is -5")
 
 # check if it picks up mate in 1
@@ -185,6 +185,10 @@ chess_ai = ai.ChessAI()
 # move, eval = chess_ai.alphabeta(1)
 # print(f"Move {move} has an eval of {eval}")
 
-chess_ai.board = chess.Board('2Q2b2/p1p1kprp/5q1B/2p1p3/8/5N2/PPP2P1P/3RK2R w K - 4 18')
+# chess_ai.board = chess.Board('2Q2b2/p1p1kprp/5q1B/2p1p3/8/5N2/PPP2P1P/3RK2R w K - 4 18')
+# move, eval = chess_ai.alphabeta(4)
+# print(f"Move {move} has an eval of {eval}")
+
+chess_ai.board = chess.Board('6k1/5ppp/8/5r1R/8/8/5P2/6K1 w - - 0 1')
 move, eval = chess_ai.alphabeta(4)
 print(f"Move {move} has an eval of {eval}")

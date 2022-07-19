@@ -37,8 +37,12 @@ else:
 
 while True:
     game_over = False
-    ai_chess.board.push(ai_chess.alphabeta(4)[0]) # computer will be white
+    move = ai_chess.alphabeta(4)[0]
+    print(f"\n{ai_chess.board.san(move)}")
+    ai_chess.board.push(move) # computer will be white
     print(ai_chess.board)
+    
+    
     while True:
         if ai_chess.board.is_game_over():
             game_over = True

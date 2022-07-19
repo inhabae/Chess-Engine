@@ -81,13 +81,14 @@ class ChessAI:
         Using alpha beta pruning, the engine evaluates the position. 
         '''
         if self.board.is_game_over():
-            eval =  -INFINITY if self.board.turn != True else INFINITY
+            eval =  -INFINITY
             return None, eval
 
         if depth == 0:
             val = self.evaluate()
             #return None, val
-            return None, self.search_all_captures(val, beta)
+            
+            return None, self.search_all_captures(alpha, beta)
         
         moves = self.order_moves()
         best_move = random.choice(moves)
@@ -98,9 +99,9 @@ class ChessAI:
             eval = -self.alphabeta(depth - 1, -beta, -alpha)[1]
 
             #for checking certain moves
-            if depth == 4:
-                print(f"current best move {best_move}")
-                print(f"move {move} has an eval of {eval}")
+            # if depth == 4:
+            #     print(f"current best move {best_move}")
+            #     print(f"move {move} has an eval of {eval}")
 
             self.board.pop()
 
@@ -113,43 +114,18 @@ class ChessAI:
             alpha = max(alpha, eval)
                 
         return best_move, alpha
-
-    def order_moves(self):
-        moves = list(self.board.legal_moves)
-        move_score = 0
-        ordered_moves = {}
-
-        for move in moves:
-            
-            move_piece = self.board.piece_type_at(move.from_square)
-            capture_piece = self.board.piece_type_at(move.to_square)
-            
-            if capture_piece != None:
-                move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
-            
-            if (move_piece == chess.PAWN and chess.square_rank(move.to_square) == 7):
-                move_score += self._get_piece_value(move.promotion)
-
-            if self.board.is_castling(move):
-                move_score += 5
-            
-            if self.board.gives_check(move):
-                move_score += 20
-            # end of ordering
-            ordered_moves[move] = move_score
-            sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
-
-        return list(sorted_orders.keys())
         
     def _get_piece_value(self, piece):
         if piece == chess.PAWN:
             return 1
-        elif piece == chess.KNIGHT or chess.BISHOP:
+        elif piece == chess.KNIGHT or piece == chess.BISHOP:
             return 3
         elif piece == chess.ROOK:
             return 5
         elif piece == chess.QUEEN:
             return 9
+        elif piece == chess.KING:
+            return 1
 
     def search_all_captures(self, alpha, beta):
         eval = self.evaluate()
@@ -158,17 +134,20 @@ class ChessAI:
             return beta
         alpha = max(alpha, eval)
 
-        moves = list(self.board.legal_moves)
+        moves = self.get_capture_moves()
 
         for move in moves:
-            if self.board.is_capture(move):
-                self.board.push(move)
-                eval = -1 * self.search_all_captures(-beta, -alpha)
-                self.board.pop()
 
-                if eval >= beta:
-                    return beta
-                alpha = max(alpha, eval)
+            #print(self.board)
+            self.board.push(move)
+            eval = -1 * self.search_all_captures(-beta, -alpha)
+            
+            #print(f"move: {move}, eval: {eval}")
+            self.board.pop()
+
+            if eval >= beta:
+                return beta
+            alpha = max(alpha, eval)
 
             # elif self.board.gives_check(move):
             #     self.board.push(move)
@@ -297,3 +276,55 @@ class ChessAI:
         #     pass
         # elif 'q' not in self.board.board_fen() 
         pass
+
+    def order_moves(self):
+        moves = list(self.board.legal_moves)
+        move_score = 0
+        sorted_orders = {}
+        ordered_moves = {}
+
+        for move in moves:
+            
+            move_piece = self.board.piece_type_at(move.from_square)
+            capture_piece = self.board.piece_type_at(move.to_square)
+            
+
+            #print(move_piece, capture_piece)
+            if capture_piece != None:
+                move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
+                #print(f"move: {move}; move score: {move_score}")
+            
+            if (move_piece == chess.PAWN and chess.square_rank(move.to_square) == 7):
+                move_score += self._get_piece_value(move.promotion)
+
+            if self.board.is_castling(move):
+                move_score += 1
+            
+            if self.board.gives_check(move):
+                move_score += 10
+            # end of ordering
+            ordered_moves[move] = move_score
+            sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
+
+        return list(sorted_orders.keys())
+    
+    def get_capture_moves(self):
+        moves = list(self.board.legal_moves)
+        move_score = 0
+        sorted_orders = {}
+        ordered_moves = {}
+
+        for move in moves:
+            
+            move_piece = self.board.piece_type_at(move.from_square)
+            capture_piece = self.board.piece_type_at(move.to_square)
+            
+            if capture_piece != None:
+                move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
+                #print(f"move: {move}; move score: {move_score}")
+                ordered_moves[move] = move_score
+            # end of ordering
+            
+        sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
+
+        return list(sorted_orders.keys())
