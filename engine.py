@@ -1,5 +1,4 @@
-from json.encoder import INFINITY
-from optparse import Values
+import math
 import chess
 import random
 
@@ -21,25 +20,19 @@ class ChessEngine:
         self.board = chess.Board(fen)
         self.move_number = 0
 
-        self.minimax_num = 0 # for testing
-        self.ab_num = 0 # for testing
-        self.s_flag = 0
-
         self.value_w_pawn = {}
         self.value_b_pawn = {} 
-
         self.value_knight = {}
         self.value_bishop = {}
         self.value_w_rook = {}
         self.value_b_rook = {}
-
         self.value_queen = {}
         self.value_w_king = {}
         self.value_b_king = {}
 
         self.occupied_squares = []
 
-        self.initialize_table()
+        self._initialize_table()
 
         self.not_endgame = True
 
@@ -71,25 +64,23 @@ class ChessEngine:
     def evaluate(self):
         '''
         Return an evaluation for the player with a turn.
-        If the player is winning +, if losing -.
+        If the player is winning, evaluation is positive otherwise negative.
         '''
-        # material diff evaluation
+        # material difference evaluation
         evaluation = self.count_materials() # white - black
 
         return evaluation if self.board.turn == chess.WHITE else -evaluation
 
-    def alphabeta(self, depth, alpha=-INFINITY, beta=INFINITY):
+    def alphabeta(self, depth, alpha=-math.inf, beta=math.inf):
         '''
-        Using alpha beta pruning, the engine evaluates the position. 
+        Using alpha beta pruning, the engine returns the best move and 
+        evaluation of the position by going into a given depth.
         '''
         if self.board.is_game_over():
-            eval =  -INFINITY
+            eval =  -math.inf
             return None, eval
 
         if depth == 0:
-            val = self.evaluate()
-            #return None, val
-            
             return None, self.search_all_captures(alpha, beta)
         
         moves = self.order_moves()
@@ -106,18 +97,16 @@ class ChessEngine:
             #     print(f"move {move} has an eval of {eval}")
 
             self.board.pop()
-
             if eval > alpha:
                 best_move = move
-
             if eval >= beta:
-                return best_move, beta
-            
+                return best_move, beta 
             alpha = max(alpha, eval)
                 
         return best_move, alpha
         
     def _get_piece_value(self, piece):
+        '''Helper function that returns a piece value.'''
         if piece == chess.PAWN:
             return 1
         elif piece == chess.KNIGHT or piece == chess.BISHOP:
@@ -130,6 +119,10 @@ class ChessEngine:
             return 1
 
     def search_all_captures(self, alpha, beta):
+        '''
+        Using alpha beta pruning, the function searches only capture moves until
+        there is longer a good capture move.
+        '''
         eval = self.evaluate()
 
         if eval >= beta:
@@ -139,31 +132,22 @@ class ChessEngine:
         moves = self.get_capture_moves()
 
         for move in moves:
-
-            #print(self.board)
             self.board.push(move)
             eval = -1 * self.search_all_captures(-beta, -alpha)
-            
-            #print(f"move: {move}, eval: {eval}")
             self.board.pop()
 
             if eval >= beta:
                 return beta
             alpha = max(alpha, eval)
 
-            # elif self.board.gives_check(move):
-            #     self.board.push(move)
-            #     eval = -1 * self.search_all_captures(-beta, -alpha)
-            #     self.board.pop()
-
-            #     if eval >= beta:
-            #         return beta
-            #     alpha = max(alpha, eval)
-
         return alpha
 
 
-    def initialize_table(self):
+    def _initialize_table(self):
+        '''
+        Initialize dictionaries for each piece to a positional value,
+        where the better positioned pieces are, the higher value they receive.
+        '''
         pawn_table_white = [
             0,  0,  0,  0,  0,  0,  0,  0,
             5, 10, 10,-20,-20, 10, 10,  5,
@@ -274,6 +258,11 @@ class ChessEngine:
             self.value_b_king[square] = king_tables_black[square]
 
     def check_endgame(self):
+        '''
+        Check if the game state is an endgame.
+        If True, modify the piece value dictionary for kings so that
+        they can move to the center.
+        '''
         if self.not_endgame:
             bf = self.board.board_fen()
             piece_count = 0
@@ -298,11 +287,11 @@ class ChessEngine:
                     self.value_b_king[s] = king_tables[s]
                 self.not_endgame = False
 
-
-
-            
-
     def order_moves(self):
+        '''
+        Order all legal moves in a position by prioritizing captures,
+        promoitions, checks, and castlings.
+        '''
         moves = list(self.board.legal_moves)
         move_score = 0
         sorted_orders = {}
@@ -313,11 +302,8 @@ class ChessEngine:
             move_piece = self.board.piece_type_at(move.from_square)
             capture_piece = self.board.piece_type_at(move.to_square)
             
-
-            #print(move_piece, capture_piece)
             if capture_piece != None:
                 move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
-                #print(f"move: {move}; move score: {move_score}")
             
             if (move_piece == chess.PAWN and chess.square_rank(move.to_square) == 7):
                 move_score += self._get_piece_value(move.promotion)
@@ -327,13 +313,16 @@ class ChessEngine:
             
             if self.board.gives_check(move):
                 move_score += 10
-            # end of ordering
+
             ordered_moves[move] = move_score
             sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
 
         return list(sorted_orders.keys())
     
     def get_capture_moves(self):
+        '''
+        Generate capturing moves in a positon and return the list.
+        '''
         moves = list(self.board.legal_moves)
         move_score = 0
         sorted_orders = {}

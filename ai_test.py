@@ -1,10 +1,9 @@
-from json.encoder import INFINITY
-from operator import xor
-import engine as engine
-import chess
+
+# import engine as engine
+# import chess
 
 # print("Testing for count_materials():")
-chess_ai = engine.ChessEngine()
+# chess_ai = engine.ChessEngine()
 # print("At the starting board, each player should have 39 points.")
 # print("Expected: The White has 39 material points.")
 # print(f"Actual: The White has {chess_ai.count_materials('white')} material points.")
@@ -126,7 +125,7 @@ chess_ai = engine.ChessEngine()
 
 
 
-'''Thorough Testing of Evaluate():'''
+# '''Thorough Testing of Evaluate():'''
 # chess_ai.board = chess.Board('5k1n/4pppp/q7/8/4r3/1N2P3/5PPP/5RKQ w - - 0 1')
 # print(f"eval: {chess_ai.evaluate()} -> 0") 
 
@@ -189,6 +188,6 @@ chess_ai = engine.ChessEngine()
 # move, eval = chess_ai.alphabeta(4)
 # print(f"Move {move} has an eval of {eval}")
 
-chess_ai.board = chess.Board('6k1/5ppp/8/5r1R/8/8/5P2/6K1 w - - 0 1')
-move, eval = chess_ai.alphabeta(4)
-print(f"Move {move} has an eval of {eval}")
+# chess_ai.board = chess.Board('6k1/5ppp/8/5r1R/8/8/5P2/6K1 w - - 0 1')
+# move, eval = chess_ai.alphabeta(4)
+# print(f"Move {move} has an eval of {eval}")
