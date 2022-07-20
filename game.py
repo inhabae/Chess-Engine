@@ -1,25 +1,25 @@
 from json.encoder import INFINITY
 import ai as ai
-import random
+import chess.syzygy
 import chess
 
+
+def check_endgame(board):
+    piece_num = 0
+    for char in board.board_fen():
+        if char.isalpha():
+            piece_num += 1 
+    
+    if piece_num < 6:
+        return True
+
+
 ai_chess = ai.ChessAI()
-ai_chess.board = chess.Board()
+ai_chess.board = chess.Board('3k4/8/4K3/8/4Q3/8/8/8 w - - 0 1')
 
-"""for testing chess module"""
-# for move in range(100):
-#     print(f"Turn {move}:")
 
-#     user_move = random.choice(list(ai_chess.board.legal_moves))
-#     ai_chess.board.push(user_move)
-#     print(ai_chess.board)
-#     print("")
-#     user_move = random.choice(list(ai_chess.board.legal_moves))
-#     ai_chess.board.push(user_move)
-#     print(ai_chess.board)
-
-player_color = input("Engine color (w/b): ")
-if player_color == 'w':
+engine_color = input("Engine color (w/b): ")
+if engine_color == 'w':
     pass
 else:
     while True:
@@ -34,16 +34,33 @@ else:
         else: 
             break
 
+while True: # get engine move
 
-while True:
     game_over = False
-    move = ai_chess.alphabeta(4)[0]
-    print(f"\n{ai_chess.board.san(move)}")
-    ai_chess.board.push(move) # computer will be white
+    if check_endgame(ai_chess.board): # if 5 piece endgame
+        with chess.syzygy.open_tablebase("3-4-5") as tablebase:
+            wdl = tablebase.probe_wdl(ai_chess.board)
+            dtz = tablebase.probe_dtz(ai_chess.board)
+
+            moves = ai_chess.order_moves()
+            best_move_flag = False
+            for move in moves:
+                board_copy = ai_chess.board.copy()
+                print(type(ai_chess.board), type(board_copy))
+                board_copy.push(move)
+
+                if tablebase.probe_wdl(board_copy) == -wdl:
+                    if -1 * tablebase.probe_dtz(board_copy) <= dtz:
+                        ai_chess.board.push(move)
+                        break
+    else:
+        move = ai_chess.alphabeta(4)[0]
+        print(f"\n{ai_chess.board.san(move)}")
+        ai_chess.board.push(move)
+    
     print(ai_chess.board)
-    
-    
-    while True:
+        
+    while True: # get human move
         if ai_chess.board.is_game_over():
             game_over = True
             break   
@@ -56,7 +73,6 @@ while True:
         except ValueError: 
             print("Va Error occured, try again!")
         else: 
-            ai_chess.move_number += 1 # not accurate
             break
 
     if game_over:

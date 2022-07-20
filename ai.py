@@ -275,6 +275,9 @@ class ChessAI:
         # if 'q' not in self.board.board_fen() and 'Q' not in self.board.board_fen():
         #     pass
         # elif 'q' not in self.board.board_fen() 
+        # bf = self.board.board_fen()
+        # if 
+        # if bf.count('q') +  bf.count('Q') == 0:
         pass
 
     def order_moves(self):
@@ -328,3 +331,5 @@ class ChessAI:
         sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
 
         return list(sorted_orders.keys())
+    
+
