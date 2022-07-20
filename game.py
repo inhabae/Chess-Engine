@@ -1,5 +1,5 @@
 from json.encoder import INFINITY
-import ai as ai
+import engine as engine
 import chess.syzygy
 import chess
 
@@ -14,8 +14,8 @@ def check_endgame(board):
         return True
 
 
-ai_chess = ai.ChessAI()
-ai_chess.board = chess.Board('3k4/8/4K3/8/4Q3/8/8/8 w - - 0 1')
+ai_chess = engine.ChessEngine()
+ai_chess.board = chess.Board()
 
 
 engine_color = input("Engine color (w/b): ")
@@ -54,8 +54,8 @@ while True: # get engine move
                         ai_chess.board.push(move)
                         break
     else:
-        move = ai_chess.alphabeta(4)[0]
-        print(f"\n{ai_chess.board.san(move)}")
+        move, eval = ai_chess.alphabeta(4)
+        print(f"\n{ai_chess.board.san(move)} with eval of {eval}")
         ai_chess.board.push(move)
     
     print(ai_chess.board)

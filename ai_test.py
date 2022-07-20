@@ -1,10 +1,10 @@
 from json.encoder import INFINITY
 from operator import xor
-import ai as ai
+import engine as engine
 import chess
 
 # print("Testing for count_materials():")
-chess_ai = ai.ChessAI()
+chess_ai = engine.ChessEngine()
 # print("At the starting board, each player should have 39 points.")
 # print("Expected: The White has 39 material points.")
 # print(f"Actual: The White has {chess_ai.count_materials('white')} material points.")

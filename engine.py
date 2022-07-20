@@ -16,7 +16,7 @@ Criteria:
 3. Material Advantage
 
 '''
-class ChessAI:
+class ChessEngine:
     def __init__(self, fen=chess.STARTING_FEN):
         self.board = chess.Board(fen)
         self.move_number = 0
@@ -38,8 +38,10 @@ class ChessAI:
         self.value_b_king = {}
 
         self.occupied_squares = []
-        
+
         self.initialize_table()
+
+        self.not_endgame = True
 
     def count_materials(self):
         '''
@@ -272,13 +274,33 @@ class ChessAI:
             self.value_b_king[square] = king_tables_black[square]
 
     def check_endgame(self):
-        # if 'q' not in self.board.board_fen() and 'Q' not in self.board.board_fen():
-        #     pass
-        # elif 'q' not in self.board.board_fen() 
-        # bf = self.board.board_fen()
-        # if 
-        # if bf.count('q') +  bf.count('Q') == 0:
-        pass
+        if self.not_endgame:
+            bf = self.board.board_fen()
+            piece_count = 0
+            for char in bf:
+                if char.isalpha() and char.islower() != 'p':
+                    piece_count += 1
+                
+            king_tables = [
+                -50,-40,-30,-20,-20,-30,-40,-50,
+                -30,-20,-10,  0,  0,-10,-20,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-30,  0,  0,  0,  0,-30,-30,
+                -50,-30,-30,-30,-30,-30,-30,-50
+            ]
+
+            if bf.count('q') +  bf.count('Q') == 0 or piece_count <= 6:
+                for s in chess.SQUARES:
+                    self.value_w_king[s] = king_tables[s]
+                    self.value_b_king[s] = king_tables[s]
+                self.not_endgame = False
+
+
+
+            
 
     def order_moves(self):
         moves = list(self.board.legal_moves)
@@ -331,5 +353,7 @@ class ChessAI:
         sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
 
         return list(sorted_orders.keys())
+    
+    
     
 
