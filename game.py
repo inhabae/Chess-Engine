@@ -19,6 +19,7 @@ def check_syzygy_endgame(board):
 
 # Initializing the engine
 chess_engine = engine.ChessEngine()
+chess_engine.board = chess.Board()
 
 # Assign the engine color, white or black
 while True:
@@ -26,9 +27,10 @@ while True:
     if engine_color == 'w' or engine_color.lower() == 'white':
         break
     elif engine_color == 'b' or engine_color.lower() == 'black':
+
         while True:
             try:
-                user_move = input("Enter ur move: ")
+                user_move = input("Enter opponent's move: ")
                 chess_engine.board.push_san(user_move)
             except AttributeError: 
                 print("Unknown move, try again!")
@@ -66,7 +68,7 @@ while True:
                         chess_engine.board.push(move)
                         break
     else:
-        move, eval = chess_engine.alphabeta(4)
+        move, eval = chess_engine.alphabeta(5)
         print(f"\n{chess_engine.board.san(move)}; Eval: {eval}")
         chess_engine.board.push(move)
     
@@ -78,7 +80,7 @@ while True:
             game_over = True
             break   
         try:
-            user_move = input("Enter ur move: ")
+            user_move = input("Enter opponent's move: ")
             chess_engine.board.push_san(user_move)
         except AttributeError: 
             print("Unknown move, try again!")
