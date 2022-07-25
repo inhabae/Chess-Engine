@@ -7,12 +7,11 @@ import random
 Given a FEN, the program returns the best move.
 Has opening lines, basic endgame knowledge.
 
-consider moves -> min_max evaluation -> return 
+consider moves -> min_max evaluation using alpha beta -> evaluate
 
 Criteria:
-1. King Safety
-2. Center Control
-3. Material Advantage
+1. Material imbalance
+2. Piece Activity
 
 '''
 class ChessEngine:
@@ -342,7 +341,3 @@ class ChessEngine:
         sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
 
         return list(sorted_orders.keys())
-    
-    
-    
-
