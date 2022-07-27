@@ -78,6 +78,9 @@ class ChessEngine:
         if self.board.is_game_over():
             eval =  -math.inf
             return None, eval
+        
+        if self.board.can_claim_threefold_repetition():
+            return None, -math.inf if self.search_all_captures(alpha, beta) < 0 else  None, 0
 
         if depth == 0:
             return None, self.search_all_captures(alpha, beta)
@@ -122,6 +125,7 @@ class ChessEngine:
         Using alpha beta pruning, the function searches only capture moves until
         there is longer a good capture move.
         '''
+
         eval = self.evaluate()
 
         if eval >= beta:
