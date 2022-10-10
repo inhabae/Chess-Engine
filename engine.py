@@ -17,79 +17,216 @@ Criteria:
 class ChessEngine:
     def __init__(self, fen=chess.STARTING_FEN):
         self.board = chess.Board(fen)
-        self.move_number = 0
 
-        self.value_w_pawn = {}
-        self.value_b_pawn = {} 
-        self.value_knight = {}
-        self.value_bishop = {}
-        self.value_w_rook = {}
-        self.value_b_rook = {}
-        self.value_queen = {}
-        self.value_w_king = {}
-        self.value_b_king = {}
+        # list that store positonal values for each piece on a specific square
+        # chess.A1 = 0, chess.B1 = 1, ... , chess.H8 = 63
+        # e.g. self.white_pawn_table[chess.A5] is 5
 
-        self.occupied_squares = []
+        self.black_pawn_table = [
+            0,  0,  0,  0,  0,  0,  0,  0,
+            50, 50, 50, 50, 50, 50, 50, 50,
+            10, 10, 20, 30, 30, 20, 10, 10,
+            5,  5, 10, 25, 25, 10,  5,  5,
+            0,  0,  0, 20, 20,  0,  0,  0,
+            5, -5,-10,  0,  0,-10, -5,  5,
+            5, 10, 10,-20,-20, 10, 10,  5,
+            0,  0,  0,  0,  0,  0,  0,  0
+        ]
 
-        self._initialize_table()
+        self.white_pawn_table = [
+            0,  0,  0,  0,  0,  0,  0,  0,
+            5, 10, 10,-20,-20, 10, 10,  5,
+            5, -5,-10,  0,  0,-10, -5,  5,
+            0,  0,  0, 20, 20,  0,  0,  0,
+            5,  5, 10, 25, 25, 10,  5,  5,
+            10, 10, 20, 30, 30, 20, 10, 10,
+            50, 50, 50, 50, 50, 50, 50, 50,
+            0,  0,  0,  0,  0,  0,  0,  0
+        ]
 
-        self.not_endgame = True
+        self.knight_table = [
+            -50,-40,-30,-30,-30,-30,-40,-50,
+            -40,-20,  0,  0,  0,  0,-20,-40,
+            -30,  0, 10, 15, 15, 10,  0,-30,
+            -30,  5, 15, 20, 20, 15,  5,-30,
+            -30,  0, 15, 20, 20, 15,  0,-30,
+            -30,  5, 10, 15, 15, 10,  5,-30,
+            -40,-20,  0,  5,  5,  0,-20,-40,
+            -50,-40,-30,-30,-30,-30,-40,-50,
+        ]
+        self.bishop_table = [
+            -20,-10,-10,-10,-10,-10,-10,-20,
+            -10,  0,  0,  0,  0,  0,  0,-10,
+            -10,  0,  5, 10, 10,  5,  0,-10,
+            -10,  5,  5, 10, 10,  5,  5,-10,
+            -10,  0, 10, 10, 10, 10,  0,-10,
+            -10, 10, 10, 10, 10, 10, 10,-10,
+            -10,  5,  0,  0,  0,  0,  5,-10,
+            -20,-10,-10,-10,-10,-10,-10,-20,
+        ]
+        self.black_rook_table = [
+            0,  0,  0,  0,  0,  0,  0,  0,
+            5, 10, 10, 10, 10, 10, 10,  5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            0,  0,  0,  5,  5,  0,  0,  0
+        ]
+        self.white_rook_table = [
+            0,  0,  0,  5,  5,  0,  0,  0,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            5, 10, 10, 10, 10, 10, 10,  5,
+            0,  0,  0,  0,  0,  0,  0,  0
+        ]
 
-    def count_materials(self):
+        self.queen_table = [
+            -20,-10,-10, -5, -5,-10,-10,-20,
+            -10,  0,  0,  0,  0,  0,  0,-10,
+            -10,  0,  5,  5,  5,  5,  0,-10,
+             -5,  0,  5,  5,  5,  5,  0, -5,
+              0,  0,  5,  5,  5,  5,  0, -5,
+            -10,  0,  5,  5,  5,  5,  0,-10,
+            -10,  0,  0,  0,  0,  0,  0,-10,
+            -20,-10,-10, -5, -5,-10,-10,-20
+        ]
+    
+        self.black_king_table = [
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -20,-30,-30,-40,-40,-30,-30,-20,
+            -10,-20,-20,-20,-20,-20,-20,-10,
+            20, 20,  0,  0,  0,  0, 20, 20,
+            20, 30, 10,  0,  0, 10, 30, 20
+        ]
+
+        self.white_king_table = [
+           20, 30, 10,  0,  0, 10, 30, 20,
+           20, 20,  0,  0,  0,  0, 20, 20,
+           -10,-20,-20,-20,-20,-20,-20,-10,
+           -20,-30,-30,-40,-40,-30,-30,-20,
+           -30,-40,-40,-50,-50,-40,-40,-30,
+           -30,-40,-40,-50,-50,-40,-40,-30,
+           -30,-40,-40,-50,-50,-40,-40,-30,
+           -30,-40,-40,-50,-50,-40,-40,-30
+        ]
+
+        # store evaluation of the current position
+        self.current_eval = self.init_evaluate() if self.board.turn == chess.WHITE else -self.init_evaluate()
+
+        # store evaluation of the possible position
+        self.pos_eval = 0
+
+        # store move to use for evaluation
+        self.new_move = None
+
+    def init_evaluate(self):
         '''
-        Takes in the color of a player's pieces: 'white' or 'black',
-        Returns the total value of materials of the player.
+        Set the initial evaluation of a position, in case a position is given to the engine.
         '''
         material = 0
-
         for square in chess.SQUARES:
             if self.board.piece_at(square):
                 piece_color = self.board.piece_at(square).color
                 piece_type = self.board.piece_at(square).piece_type
                 if piece_type == chess.PAWN:
-                    material += (105 + self.value_w_pawn[square]) if piece_color == chess.WHITE else (-105 - self.value_b_pawn[square])
+                    material += (105 + self.white_pawn_table[square]) if piece_color == chess.WHITE else (-105 - self.black_pawn_table[square])
                 elif piece_type == chess.KNIGHT:
-                    material += (320 + self.value_knight[square]) if piece_color == chess.WHITE else (-320 - self.value_knight[square])
+                    material += (320 + self.knight_table[square]) if piece_color == chess.WHITE else (-320 - self.knight_table[square])
                 elif piece_type == chess.BISHOP:
-                    material += (330 + self.value_bishop[square]) if piece_color == chess.WHITE else (-330 - self.value_bishop[square])
+                    material += (330 + self.bishop_table[square]) if piece_color == chess.WHITE else (-330 - self.bishop_table[square])
                 elif piece_type == chess.ROOK:
-                    material += (500 + self.value_w_rook[square]) if piece_color == chess.WHITE else (-500 - self.value_b_rook[square])
+                    material += (500 + self.white_rook_table[square]) if piece_color == chess.WHITE else (-500 - self.black_rook_table[square])
                 elif piece_type == chess.QUEEN:
-                    material += (900 + self.value_queen[square]) if piece_color == chess.WHITE else (-900 - self.value_queen[square])
-                elif piece_type == chess.KING:
-                    material += 20000 + self.value_w_king[square] if piece_color == chess.WHITE else (-20000 - self.value_b_king[square])
+                    material += (900 + self.queen_table[square]) if piece_color == chess.WHITE else (-900 - self.queen_table[square])
         return material
 
-    def evaluate(self):
+    def evaluate(self, move):
         '''
-        Return an evaluation for the player with a turn.
-        If the player is winning, evaluation is positive otherwise negative.
+        Return the difference between white and black's materials after a move.
         '''
-        # material difference evaluation
-        evaluation = self.count_materials() # white - black
+        to_square = move.to_square
+        from_square = move.from_square
+        self.pos_eval = 0
 
-        return evaluation if self.board.turn == chess.WHITE else -evaluation
+        moved_piece = self.board.piece_at(move.from_square)
+        captured_piece = self.board.piece_at(move.to_square)
+        if captured_piece:
+            captured_piece_type = self.board.piece_at(move.to_square).piece_type
+            captured_piece_color = self.board.piece_at(move.to_square).color
+        
+        if moved_piece.piece_type == chess.PAWN:
+            if moved_piece.color == chess.WHITE:
+                self.pos_eval += self.current_eval - self.white_pawn_table[from_square] + self.white_pawn_table[to_square]
+            else:
+                self.pos_eval += self.current_eval - self.black_pawn_table[from_square] + self.black_pawn_table[to_square]
+        elif moved_piece.piece_type == chess.KNIGHT: 
+            self.pos_eval += self.current_eval - self.knight_table[from_square] + self.knight_table[to_square]
+        elif moved_piece.piece_type == chess.BISHOP:
+            self.pos_eval += self.current_eval - self.bishop_table[from_square] + self.bishop_table[to_square]
+        elif moved_piece.piece_type == chess.ROOK:
+            if moved_piece.color == chess.WHITE:
+                self.pos_eval += self.current_eval - self.white_rook_table[from_square] + self.white_rook_table[to_square]
+            else:
+                self.pos_eval += self.current_eval - self.black_rook_table[from_square] + self.black_rook_table[to_square]
+        elif moved_piece.piece_type == chess.QUEEN:
+            self.pos_eval += self.current_eval - self.queen_table[from_square] + self.queen_table[to_square]
+        else:
+            if moved_piece.color == chess.WHITE:
+                self.pos_eval += self.current_eval - self.white_king_table[from_square] + self.white_king_table[to_square]
+            else:
+                self.pos_eval += self.current_eval - self.black_king_table[from_square] + self.black_king_table[to_square]
+
+        if captured_piece == None:
+            pass
+        elif captured_piece_type == chess.PAWN:
+            positional_value = self.white_pawn_table[to_square] if captured_piece_color == chess.WHITE else self.black_pawn_table[to_square]
+            self.pos_eval += 105 + positional_value
+        elif captured_piece_type == chess.KNIGHT:
+            positional_value = self.knight_table[to_square]
+            self.pos_eval += 320 + positional_value
+        elif captured_piece_type == chess.BISHOP:
+            positional_value = self.bishop_table[to_square]
+            self.pos_eval += 330 + positional_value
+        elif captured_piece_type == chess.ROOK:
+            positional_value = self.white_rook_table[to_square] if captured_piece_color == chess.WHITE else self.black_rook_table[to_square]
+            self.pos_eval += 500 + positional_value
+        elif captured_piece_type == chess.QUEEN:
+            positional_value = self.queen_table[to_square]
+            self.pos_eval += 320 + positional_value
+
+        return self.pos_eval
 
     def alphabeta(self, depth, alpha=-math.inf, beta=math.inf):
         '''
         Using alpha beta pruning, the engine returns the best move and 
         evaluation of the position by going into a given depth.
         '''
-        if self.board.is_game_over():
+        # might need to check for draws, change later
+        if self.board.is_game_over(): 
             eval =  -math.inf
             return None, eval
         
         if self.board.can_claim_threefold_repetition():
             return None, -math.inf if self.search_all_captures(alpha, beta) < 0 else  None, 0
 
-        if depth == 0:
-            return None, self.search_all_captures(alpha, beta)
-        
+        if depth == 0: # need quiescence search, change later
+            self.board.pop()
+            eval = self.evaluate(self.new_move)
+            self.board.push(self.new_move)
+            return None, eval
         moves = self.order_moves()
         best_move = random.choice(moves)
 
-
         for move in moves:
+            self.new_move = move # store move used for evaluate()
             self.board.push(move)
             eval = -self.alphabeta(depth - 1, -beta, -alpha)[1]
 
@@ -101,194 +238,66 @@ class ChessEngine:
             self.board.pop()
             if eval > alpha:
                 best_move = move
-            if eval >= beta:
+            if alpha >= beta:
                 return best_move, beta 
             alpha = max(alpha, eval)
                 
         return best_move, alpha
-        
-    def _get_piece_value(self, piece):
-        '''Helper function that returns a piece value.'''
-        if piece == chess.PAWN:
-            return 1
-        elif piece == chess.KNIGHT or piece == chess.BISHOP:
-            return 3
-        elif piece == chess.ROOK:
-            return 5
-        elif piece == chess.QUEEN:
-            return 9
-        elif piece == chess.KING:
-            return 1
 
-    def search_all_captures(self, alpha, beta):
-        '''
-        Using alpha beta pruning, the function searches only capture moves until
-        there is longer a good capture move.
-        '''
+    # def search_all_captures(self, alpha, beta):
+    #     '''
+    #     Using alpha beta pruning, the function searches only capture moves until
+    #     there is longer a good capture move.
+    #     '''
 
-        eval = self.evaluate()
+    #     eval = self.evaluate()
 
-        if eval >= beta:
-            return beta
-        alpha = max(alpha, eval)
+    #     if eval >= beta:
+    #         return beta
+    #     alpha = max(alpha, eval)
 
-        moves = self.get_capture_moves()
+    #     moves = self.get_capture_moves()
 
-        for move in moves:
-            self.board.push(move)
-            eval = -1 * self.search_all_captures(-beta, -alpha)
-            self.board.pop()
+    #     for move in moves:
+    #         self.board.push(move)
+    #         eval = -1 * self.search_all_captures(-beta, -alpha)
+    #         self.board.pop()
 
-            if eval >= beta:
-                return beta
-            alpha = max(alpha, eval)
+    #         if eval >= beta:
+    #             return beta
+    #         alpha = max(alpha, eval)
 
-        return alpha
+    #     return alpha
 
-
-    def _initialize_table(self):
-        '''
-        Initialize dictionaries for each piece to a positional value,
-        where the better positioned pieces are, the higher value they receive.
-        '''
-        pawn_table_white = [
-            0,  0,  0,  0,  0,  0,  0,  0,
-            5, 10, 10,-20,-20, 10, 10,  5,
-            5, -5,-10,  0,  0,-10, -5,  5,
-            0,  0,  0, 20, 20,  0,  0,  0,
-            5,  5, 10, 25, 25, 10,  5,  5,
-            10, 10, 20, 30, 30, 20, 10, 10,
-            50, 50, 50, 50, 50, 50, 50, 50,
-            0,  0,  0,  0,  0,  0,  0,  0
-        ]
-
-        pawn_table_black = [
-            0,  0,  0,  0,  0,  0,  0,  0,
-            50, 50, 50, 50, 50, 50, 50, 50,
-            10, 10, 20, 30, 30, 20, 10, 10,
-            5,  5, 10, 25, 25, 10,  5,  5,
-            0,  0,  0, 20, 20,  0,  0,  0,
-            5, -5,-10,  0,  0,-10, -5,  5,
-            5, 10, 10,-20,-20, 10, 10,  5,
-            0,  0,  0,  0,  0,  0,  0,  0
-        ]
-        knight_tables = [
-            -50,-40,-30,-30,-30,-30,-40,-50,
-            -40,-20,  0,  0,  0,  0,-20,-40,
-            -30,  0, 10, 15, 15, 10,  0,-30,
-            -30,  5, 15, 20, 20, 15,  5,-30,
-            -30,  0, 15, 20, 20, 15,  0,-30,
-            -30,  5, 10, 15, 15, 10,  5,-30,
-            -40,-20,  0,  5,  5,  0,-20,-40,
-            -50,-40,-30,-30,-30,-30,-40,-50,
-        ]
-        bishop_tables = [
-            -20,-10,-10,-10,-10,-10,-10,-20,
-            -10,  0,  0,  0,  0,  0,  0,-10,
-            -10,  0,  5, 10, 10,  5,  0,-10,
-            -10,  5,  5, 10, 10,  5,  5,-10,
-            -10,  0, 10, 10, 10, 10,  0,-10,
-            -10, 10, 10, 10, 10, 10, 10,-10,
-            -10,  5,  0,  0,  0,  0,  5,-10,
-            -20,-10,-10,-10,-10,-10,-10,-20,
-        ]
-        rook_table_white = [
-            0,  0,  0,  5,  5,  0,  0,  0,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            5, 10, 10, 10, 10, 10, 10,  5,
-            0,  0,  0,  0,  0,  0,  0,  0
-        ]
-        rook_table_black = [
-            0,  0,  0,  0,  0,  0,  0,  0,
-            5, 10, 10, 10, 10, 10, 10,  5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            0,  0,  0,  5,  5,  0,  0,  0
-        ]
-
-        queen_tables = [
-            -20,-10,-10, -5, -5,-10,-10,-20,
-            -10,  0,  0,  0,  0,  0,  0,-10,
-            -10,  0,  5,  5,  5,  5,  0,-10,
-             -5,  0,  5,  5,  5,  5,  0, -5,
-              0,  0,  5,  5,  5,  5,  0, -5,
-            -10,  5,  5,  5,  5,  5,  0,-10,
-            -10,  0,  5,  0,  0,  0,  0,-10,
-            -20,-10,-10, -5, -5,-10,-10,-20
-        ]
-
-        king_tables_white = [
-           20, 30, 10,  0,  0, 10, 30, 20,
-           20, 20,  0,  0,  0,  0, 20, 20,
-           -10,-20,-20,-20,-20,-20,-20,-10,
-           -20,-30,-30,-40,-40,-30,-30,-20,
-           -30,-40,-40,-50,-50,-40,-40,-30,
-           -30,-40,-40,-50,-50,-40,-40,-30,
-           -30,-40,-40,-50,-50,-40,-40,-30,
-           -30,-40,-40,-50,-50,-40,-40,-30
-        ]
-
-        king_tables_black = [
-            -30,-40,-40,-50,-50,-40,-40,-30,
-            -30,-40,-40,-50,-50,-40,-40,-30,
-            -30,-40,-40,-50,-50,-40,-40,-30,
-            -30,-40,-40,-50,-50,-40,-40,-30,
-            -20,-30,-30,-40,-40,-30,-30,-20,
-            -10,-20,-20,-20,-20,-20,-20,-10,
-            20, 20,  0,  0,  0,  0, 20, 20,
-            20, 30, 10,  0,  0, 10, 30, 20
-        ]
-
-        for square in chess.SQUARES:
-            self.value_w_pawn[square] = pawn_table_white[square]
-            self.value_b_pawn[square] = pawn_table_black[square]
-
-            self.value_knight[square] = knight_tables[square]
-            self.value_bishop[square] = bishop_tables[square]
-
-            self.value_w_rook[square] = rook_table_white[square]
-            self.value_b_rook[square] = rook_table_black[square]
-
-            self.value_queen[square] = queen_tables[square]
-            self.value_w_king[square] = king_tables_white[square]
-            self.value_b_king[square] = king_tables_black[square]
-
-    def check_endgame(self):
-        '''
-        Check if the game state is an endgame.
-        If True, modify the piece value dictionary for kings so that
-        they can move to the center.
-        '''
-        if self.not_endgame:
-            bf = self.board.board_fen()
-            piece_count = 0
-            for char in bf:
-                if char.isalpha() and char.islower() != 'p':
-                    piece_count += 1
+    # def check_endgame(self):
+    #     '''
+    #     Check if the game state is an endgame.
+    #     If True, modify the piece value dictionary for kings so that
+    #     they can move to the center.
+    #     '''
+    #     if self.not_endgame:
+    #         bf = self.board.board_fen()
+    #         piece_count = 0
+    #         for char in bf:
+    #             if char.isalpha() and char.islower() != 'p':
+    #                 piece_count += 1
                 
-            king_tables = [
-                -50,-40,-30,-20,-20,-30,-40,-50,
-                -30,-20,-10,  0,  0,-10,-20,-30,
-                -30,-10, 20, 30, 30, 20,-10,-30,
-                -30,-10, 30, 40, 40, 30,-10,-30,
-                -30,-10, 30, 40, 40, 30,-10,-30,
-                -30,-10, 20, 30, 30, 20,-10,-30,
-                -30,-30,  0,  0,  0,  0,-30,-30,
-                -50,-30,-30,-30,-30,-30,-30,-50
-            ]
+    #         king_tables = [
+    #             -50,-40,-30,-20,-20,-30,-40,-50,
+    #             -30,-20,-10,  0,  0,-10,-20,-30,
+    #             -30,-10, 20, 30, 30, 20,-10,-30,
+    #             -30,-10, 30, 40, 40, 30,-10,-30,
+    #             -30,-10, 30, 40, 40, 30,-10,-30,
+    #             -30,-10, 20, 30, 30, 20,-10,-30,
+    #             -30,-30,  0,  0,  0,  0,-30,-30,
+    #             -50,-30,-30,-30,-30,-30,-30,-50
+    #         ]
 
-            if bf.count('q') +  bf.count('Q') == 0 or piece_count <= 6:
-                for s in chess.SQUARES:
-                    self.value_w_king[s] = king_tables[s]
-                    self.value_b_king[s] = king_tables[s]
-                self.not_endgame = False
+    #         if bf.count('q') +  bf.count('Q') == 0 or piece_count <= 6:
+    #             for s in chess.SQUARES:
+    #                 self.value_w_king[s] = king_tables[s]
+    #                 self.value_b_king[s] = king_tables[s]
+    #             self.not_endgame = False
 
     def order_moves(self):
         '''
@@ -300,16 +309,15 @@ class ChessEngine:
         sorted_orders = {}
         ordered_moves = {}
 
-        for move in moves:
-            
+        capture_moves = {}
+
+        for move in moves:  
             move_piece = self.board.piece_type_at(move.from_square)
             capture_piece = self.board.piece_type_at(move.to_square)
             
-            if capture_piece != None:
-                move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
-            
-            if (move_piece == chess.PAWN and chess.square_rank(move.to_square) == 7):
-                move_score += self._get_piece_value(move.promotion)
+            # if capture_piece != None:
+            #     move_score = self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
+    
 
             if self.board.is_castling(move):
                 move_score += 1
@@ -322,26 +330,3 @@ class ChessEngine:
 
         return list(sorted_orders.keys())
     
-    def get_capture_moves(self):
-        '''
-        Generate capturing moves in a positon and return the list.
-        '''
-        moves = list(self.board.legal_moves)
-        move_score = 0
-        sorted_orders = {}
-        ordered_moves = {}
-
-        for move in moves:
-            
-            move_piece = self.board.piece_type_at(move.from_square)
-            capture_piece = self.board.piece_type_at(move.to_square)
-            
-            if capture_piece != None:
-                move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
-                #print(f"move: {move}; move score: {move_score}")
-                ordered_moves[move] = move_score
-            # end of ordering
-            
-        sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
-
-        return list(sorted_orders.keys())
