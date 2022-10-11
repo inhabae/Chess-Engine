@@ -18,8 +18,8 @@ def check_syzygy_endgame(board):
 
 
 # Initializing the engine
-chess_engine = engine.ChessEngine()
-chess_engine.board = chess.Board()
+chess_engine = engine.ChessEngine(4)
+chess_engine.board = chess.Board('6k1/p3p1bp/R5p1/1p6/8/5r2/PPP5/R1B3K1 w - - 0 22')
 
 # Assign the engine color, white or black
 while True:
@@ -68,8 +68,9 @@ while True:
                         chess_engine.board.push(move)
                         break
     else:
+        chess_engine.check_endgame()
         eval = chess_engine.alphabeta(4)
-        print(f"\n{chess_engine.board.san(chess_engine.best_move)}")
+        print(f"\n{chess_engine.board.san(chess_engine.best_move)} with eval of {eval}")
         chess_engine.board.push(chess_engine.best_move)
     
     #print(chess_engine.board)

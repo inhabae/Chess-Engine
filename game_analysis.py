@@ -22,3 +22,8 @@ import engine as engine
 # chess_ai = engine.ChessEngine('r2qk2r/p1p2ppp/2pbpn2/3p1b2/3P4/2N1PN2/PPPB1PPP/R2QK2R w KQkq - 2 8')
 # eval = chess_ai.alphabeta(4)
 # print(f"{chess_ai.best_move} is the move, with eval of {eval}")
+
+### Does not know how to play endgame with materials up
+chess_ai = engine.ChessEngine('6k1/5pp1/p4r1p/2K5/4r3/8/8/R7 w - - 0 1')
+
+

@@ -14,7 +14,7 @@ Criteria:
 
 '''
 class ChessEngine:
-    def __init__(self, fen=chess.STARTING_FEN):
+    def __init__(self, depth=4, fen=chess.STARTING_FEN):
         self.board = chess.Board(fen)
 
         # list that store positonal values for each piece on a specific square
@@ -124,7 +124,10 @@ class ChessEngine:
         self.best_move = None
 
         # store depth for searching moves
-        self.depth_limit = 4
+        self.depth_limit = depth
+
+        # a flag to check if the board has reached an endgame
+        self.is_endgame = False
 
     def evaluate(self):
         '''
@@ -187,13 +190,21 @@ class ChessEngine:
             return -math.inf if self.evaluate() < 0 else 0
 
         if depth == 0: # need quiescence search, change later
-            eval = self.quiescence_search(alpha, beta)
-            return eval
+            return self.quiescence_search(alpha, beta)
 
         moves = self.order_moves(self.board.legal_moves)
         if depth == self.depth_limit:
             self.best_move = moves[0] 
         for move in moves:
+            if self.board.san(move) == 'Rxa7' and depth == 4:
+                print(self.board)
+                print(f"Move: {move} at depth {depth}")
+            
+            elif self.board.san(move) == 'Bd4+' and depth == 3:
+                print(self.board)
+                print(f"Move: {move} at depth {depth}")
+
+            
             self.board.push(move)
             eval = -self.alphabeta(depth - 1, -beta, -alpha)
             self.board.pop()
@@ -205,12 +216,17 @@ class ChessEngine:
         return alpha
 
     def quiescence_search(self, alpha, beta):
-        stand_pat = self.evaluate()
-        if stand_pat >= beta:
-            return beta
-        if alpha < stand_pat:
-            alpha = stand_pat
-        moves = self.board.generate_legal_captures()
+        if not self.board.is_check():
+            stand_pat = self.evaluate()
+            if stand_pat >= beta:
+                return beta
+            if alpha < stand_pat:
+                alpha = stand_pat
+        
+        # checking checks does not improve the outcome...    
+        moves = list(self.board.generate_legal_captures())
+        #moves = capture_moves + self._generate_check_moves()
+
         for move in self.order_moves(moves):
             self.board.push(move)
             eval = -self.quiescence_search(-beta, -alpha)
@@ -220,36 +236,6 @@ class ChessEngine:
                 return beta
             alpha = max(eval, alpha)
         return alpha
-
-    # def check_endgame(self):
-    #     '''
-    #     Check if the game state is an endgame.
-    #     If True, modify the piece value dictionary for kings so that
-    #     they can move to the center.
-    #     '''
-    #     if self.not_endgame:
-    #         bf = self.board.board_fen()
-    #         piece_count = 0
-    #         for char in bf:
-    #             if char.isalpha() and char.islower() != 'p':
-    #                 piece_count += 1
-                
-    #         king_tables = [
-    #             -50,-40,-30,-20,-20,-30,-40,-50,
-    #             -30,-20,-10,  0,  0,-10,-20,-30,
-    #             -30,-10, 20, 30, 30, 20,-10,-30,
-    #             -30,-10, 30, 40, 40, 30,-10,-30,
-    #             -30,-10, 30, 40, 40, 30,-10,-30,
-    #             -30,-10, 20, 30, 30, 20,-10,-30,
-    #             -30,-30,  0,  0,  0,  0,-30,-30,
-    #             -50,-30,-30,-30,-30,-30,-30,-50
-    #         ]
-
-    #         if bf.count('q') +  bf.count('Q') == 0 or piece_count <= 6:
-    #             for s in chess.SQUARES:
-    #                 self.value_w_king[s] = king_tables[s]
-    #                 self.value_b_king[s] = king_tables[s]
-    #             self.not_endgame = False
 
     def order_moves(self, moves):
         '''
@@ -268,12 +254,52 @@ class ChessEngine:
                 move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
             
             if self.board.gives_check(move):
-                move_score += 50
+                move_score += 3
 
             ordered_moves[move] = move_score
             sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
 
         return list(sorted_orders.keys())
+
+    def check_endgame(self):
+        '''
+        Check if the game state is an endgame.
+        If True, modify the piece value dictionary for kings so that
+        they can move to the center.
+        '''
+        if not self.is_endgame:
+            bf = self.board.board_fen()
+            piece_count = 0
+            for char in bf:
+                if char.isalpha() and char.islower() != 'p':
+                    piece_count += 1
+                
+            white_king_table = [
+                -50,-30,-30,-30,-30,-30,-30,-50,
+                -30,-30,  0,  0,  0,  0,-30,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-20,-10,  0,  0,-10,-20,-30,
+                -50,-40,-30,-20,-20,-30,-40,-50
+            ]
+            black_king_table = [
+                -50,-40,-30,-20,-20,-30,-40,-50,
+                -30,-20,-10,  0,  0,-10,-20,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-30,  0,  0,  0,  0,-30,-30,
+                -50,-30,-30,-30,-30,-30,-30,-50
+            ]
+
+            if bf.count('q') +  bf.count('Q') == 0 and piece_count <= 2:
+                for s in chess.SQUARES:
+                    self.white_king_table[s] = white_king_table[s]
+                    self.black_king_table[s] = black_king_table[s]
+                self.is_endgame = True
     
 
     def _get_piece_value(self, piece_type):
@@ -288,3 +314,10 @@ class ChessEngine:
         elif piece_type == chess.QUEEN:
             return 900
         return 0
+
+    def _generate_check_moves(self):
+        moves = []
+        for move in self.board.legal_moves:
+            if self.board.gives_check(move):
+                moves.append(move)
+        return moves
