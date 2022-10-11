@@ -21,3 +21,6 @@ Syzygy Endgame
 # How It Looks
 <img width="371" alt="Screen Shot 2022-10-11 at 1 19 48 PM" src="https://user-images.githubusercontent.com/65887459/195190432-237af847-eb06-470a-b137-998602af5803.png">
 
+# Memorable Move
+<img width="537" alt="Screen Shot 2022-10-11 at 1 24 17 PM" src="https://user-images.githubusercontent.com/65887459/195191252-6f27116e-54af-4926-bcd9-2b00b88b821c.png">
+* Bg4!! pins White rook to queen, winning an exchange. Opponent (1224) took the bishop with his h-pawn, and the engine immediately played Qh1, delivering a cold checkmate.
