@@ -1,20 +1,23 @@
 # Chess-Engine
-A Python-based Chess engine that has a rating equivalent to 1200 on chess.com.
+A Python-based Chess engine that has a rating equivalent to 1300 on chess.com.
 
 # Features
 Alpha Beta Pruning
-* Assessing alpha and beta in a given position, the engine disregards branches that the opponent is likely not to choose, which decreases search time.
-* The engine keeps on searching until there is no "good captures", which tries to mitigate the horizon effect.
+* Assessing alpha and beta in a given position, the engine disregards branches that the opponent is likely not to choose, which decreases the number of branches the engine considers.
+
+Quiscence Search
+* The engine keeps on searching until there is no "good captures" or "checks", which tries to mitigate the horizon effect. For example, when the engine can look ahead one half-move it thinks that queen capturing a protected pawn is a good move. However, the move is indeed a bad one, as the queen will be captured very next move. 
 
 Move Ordering
-* The engine orders all possible legal moves prior to evaluating, which results in a more effective search.
+* The engine orders given moves prior to evaluation, which significantly enhances the performance of alpha beta pruning.
+* Moves such as good captures, promotions, and checks are given a higher point.
 
-Assign value by Positions
-* The engine evaluates a position better if the player's pieces are positoned well. This is done by accessing a value of the piece on a specific square; for example, a knight on e4 (center) gains 20 points whereas a knight on a1 (corner) loses 50 material points.
+Assign Positional Values to Pieces
+* The engine gives a higher evaluation if the player's pieces are positoned well. The engine uses different tables for different pieces; for example, a mobile knight on e4 (center) gains 20 points whereas an inactive knight on a1 (corner) loses 50 material points.
 
 Syzygy Endgame
-* Once there are only 5 pieces left on the board, the engine uses a tablebase endgame to play the best precalculated move to ensure the maximum chances.
+* Once there are only 5 pieces left on the board, the engine uses a tablebase endgame to play the best precalculated moves to ensure the maximum chances to win or draw.
 
 # How It Looks
+<img width="371" alt="Screen Shot 2022-10-11 at 1 19 48 PM" src="https://user-images.githubusercontent.com/65887459/195190432-237af847-eb06-470a-b137-998602af5803.png">
 
-<img width="500" alt="Screen Shot 2022-07-20 at 2 52 29 PM" src="https://user-images.githubusercontent.com/65887459/180088757-d5f09568-2864-466d-bd36-57753098f020.png">
