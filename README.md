@@ -1,5 +1,5 @@
 # Chess-Engine
-A Python-based Chess engine that has a rating equivalent to 1300 on chess.com.
+A Python-based Chess engine that has a rating equivalent to 1300 on chess.com in rapid format. It is capable of beating higher-rated players around 1500, but it suffers with time control.
 
 # Features
 Alpha Beta Pruning
