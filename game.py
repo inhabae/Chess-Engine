@@ -19,7 +19,7 @@ def check_syzygy_endgame(board):
 
 # Initializing the engine
 chess_engine = engine.ChessEngine(4)
-chess_engine.board = chess.Board('6k1/p3p1bp/R5p1/1p6/8/5r2/PPP5/R1B3K1 w - - 0 22')
+chess_engine.board = chess.Board()
 
 # Assign the engine color, white or black
 while True:

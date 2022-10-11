@@ -196,15 +196,6 @@ class ChessEngine:
         if depth == self.depth_limit:
             self.best_move = moves[0] 
         for move in moves:
-            if self.board.san(move) == 'Rxa7' and depth == 4:
-                print(self.board)
-                print(f"Move: {move} at depth {depth}")
-            
-            elif self.board.san(move) == 'Bd4+' and depth == 3:
-                print(self.board)
-                print(f"Move: {move} at depth {depth}")
-
-            
             self.board.push(move)
             eval = -self.alphabeta(depth - 1, -beta, -alpha)
             self.board.pop()
@@ -271,8 +262,9 @@ class ChessEngine:
             bf = self.board.board_fen()
             piece_count = 0
             for char in bf:
-                if char.isalpha() and char.islower() != 'p':
+                if char.isalpha() and (char.lower() != 'p'):
                     piece_count += 1
+        
                 
             white_king_table = [
                 -50,-30,-30,-30,-30,-30,-30,-50,
@@ -295,7 +287,7 @@ class ChessEngine:
                 -50,-30,-30,-30,-30,-30,-30,-50
             ]
 
-            if bf.count('q') +  bf.count('Q') == 0 and piece_count <= 2:
+            if bf.count('q') +  bf.count('Q') == 0 and piece_count <= 6:
                 for s in chess.SQUARES:
                     self.white_king_table[s] = white_king_table[s]
                     self.black_king_table[s] = black_king_table[s]
