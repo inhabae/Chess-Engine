@@ -1,6 +1,5 @@
 import math
 import chess
-import random
 
 
 '''
@@ -119,17 +118,17 @@ class ChessEngine:
         ]
 
         # store evaluation of the current position
-        self.current_eval = self.init_evaluate() if self.board.turn == chess.WHITE else -self.init_evaluate()
+        self.current_eval = self.evaluate()
 
-        # store evaluation of the possible position
-        self.pos_eval = 0
+        # store best move
+        self.best_move = None
 
-        # store move to use for evaluation
-        self.new_move = None
+        # store depth for searching moves
+        self.depth_limit = 4
 
-    def init_evaluate(self):
+    def evaluate(self):
         '''
-        Set the initial evaluation of a position, in case a position is given to the engine.
+        Evaluate
         '''
         material = 0
         for square in chess.SQUARES:
@@ -146,63 +145,32 @@ class ChessEngine:
                     material += (500 + self.white_rook_table[square]) if piece_color == chess.WHITE else (-500 - self.black_rook_table[square])
                 elif piece_type == chess.QUEEN:
                     material += (900 + self.queen_table[square]) if piece_color == chess.WHITE else (-900 - self.queen_table[square])
-        return material
+                else: 
+                    material += (self.white_king_table[square]) if piece_color == chess.WHITE else (-self.black_king_table[square])
+        return material if self.board.turn == chess.WHITE else -material
 
-    def evaluate(self, move):
+
+    def negamax(self, depth):
         '''
-        Return the difference between white and black's materials after a move.
+        Using negamax, the engine evaluates the position.
         '''
-        to_square = move.to_square
-        from_square = move.from_square
-        self.pos_eval = 0
+        # end of recursion, return the evaluation of the position 
+        if self.board.is_game_over() == True:
+            if self.board.is_check():
+                return -math.inf
+            return 0 # draw  
 
-        moved_piece = self.board.piece_at(move.from_square)
-        captured_piece = self.board.piece_at(move.to_square)
-        if captured_piece:
-            captured_piece_type = self.board.piece_at(move.to_square).piece_type
-            captured_piece_color = self.board.piece_at(move.to_square).color
-        
-        if moved_piece.piece_type == chess.PAWN:
-            if moved_piece.color == chess.WHITE:
-                self.pos_eval += self.current_eval - self.white_pawn_table[from_square] + self.white_pawn_table[to_square]
-            else:
-                self.pos_eval += self.current_eval - self.black_pawn_table[from_square] + self.black_pawn_table[to_square]
-        elif moved_piece.piece_type == chess.KNIGHT: 
-            self.pos_eval += self.current_eval - self.knight_table[from_square] + self.knight_table[to_square]
-        elif moved_piece.piece_type == chess.BISHOP:
-            self.pos_eval += self.current_eval - self.bishop_table[from_square] + self.bishop_table[to_square]
-        elif moved_piece.piece_type == chess.ROOK:
-            if moved_piece.color == chess.WHITE:
-                self.pos_eval += self.current_eval - self.white_rook_table[from_square] + self.white_rook_table[to_square]
-            else:
-                self.pos_eval += self.current_eval - self.black_rook_table[from_square] + self.black_rook_table[to_square]
-        elif moved_piece.piece_type == chess.QUEEN:
-            self.pos_eval += self.current_eval - self.queen_table[from_square] + self.queen_table[to_square]
-        else:
-            if moved_piece.color == chess.WHITE:
-                self.pos_eval += self.current_eval - self.white_king_table[from_square] + self.white_king_table[to_square]
-            else:
-                self.pos_eval += self.current_eval - self.black_king_table[from_square] + self.black_king_table[to_square]
+        if depth == 0:
+            eval = self.evaluate()
+            return eval
 
-        if captured_piece == None:
-            pass
-        elif captured_piece_type == chess.PAWN:
-            positional_value = self.white_pawn_table[to_square] if captured_piece_color == chess.WHITE else self.black_pawn_table[to_square]
-            self.pos_eval += 105 + positional_value
-        elif captured_piece_type == chess.KNIGHT:
-            positional_value = self.knight_table[to_square]
-            self.pos_eval += 320 + positional_value
-        elif captured_piece_type == chess.BISHOP:
-            positional_value = self.bishop_table[to_square]
-            self.pos_eval += 330 + positional_value
-        elif captured_piece_type == chess.ROOK:
-            positional_value = self.white_rook_table[to_square] if captured_piece_color == chess.WHITE else self.black_rook_table[to_square]
-            self.pos_eval += 500 + positional_value
-        elif captured_piece_type == chess.QUEEN:
-            positional_value = self.queen_table[to_square]
-            self.pos_eval += 320 + positional_value
-
-        return self.pos_eval
+        max_eval = -math.inf
+        for move in self.board.legal_moves:
+            self.board.push(move)
+            eval = -self.negamax(depth - 1)
+            self.board.pop()
+            max_eval = max(max_eval, eval)
+        return max_eval
 
     def alphabeta(self, depth, alpha=-math.inf, beta=math.inf):
         '''
@@ -211,63 +179,47 @@ class ChessEngine:
         '''
         # might need to check for draws, change later
         if self.board.is_game_over(): 
-            eval =  -math.inf
-            return None, eval
+            if self.board.is_check():
+                return -math.inf
+            return 0 # draw  
         
         if self.board.can_claim_threefold_repetition():
-            return None, -math.inf if self.search_all_captures(alpha, beta) < 0 else  None, 0
+            return -math.inf if self.evaluate() < 0 else 0
 
         if depth == 0: # need quiescence search, change later
-            self.board.pop()
-            eval = self.evaluate(self.new_move)
-            self.board.push(self.new_move)
-            return None, eval
-        moves = self.order_moves()
-        best_move = random.choice(moves)
+            eval = self.quiescence_search(alpha, beta)
+            return eval
 
+        moves = self.order_moves(self.board.legal_moves)
+        if depth == self.depth_limit:
+            self.best_move = moves[0] 
         for move in moves:
-            self.new_move = move # store move used for evaluate()
             self.board.push(move)
-            eval = -self.alphabeta(depth - 1, -beta, -alpha)[1]
-
-            #for checking certain moves
-            # if depth == 4:
-            #     print(f"current best move {best_move}")
-            #     print(f"move {move} has an eval of {eval}")
-
+            eval = -self.alphabeta(depth - 1, -beta, -alpha)
             self.board.pop()
-            if eval > alpha:
-                best_move = move
+            if eval > alpha and depth == self.depth_limit:
+                self.best_move = move
             if alpha >= beta:
-                return best_move, beta 
+                return beta 
             alpha = max(alpha, eval)
-                
-        return best_move, alpha
+        return alpha
 
-    # def search_all_captures(self, alpha, beta):
-    #     '''
-    #     Using alpha beta pruning, the function searches only capture moves until
-    #     there is longer a good capture move.
-    #     '''
+    def quiescence_search(self, alpha, beta):
+        stand_pat = self.evaluate()
+        if stand_pat >= beta:
+            return beta
+        if alpha < stand_pat:
+            alpha = stand_pat
+        moves = self.board.generate_legal_captures()
+        for move in self.order_moves(moves):
+            self.board.push(move)
+            eval = -self.quiescence_search(-beta, -alpha)
+            self.board.pop()
 
-    #     eval = self.evaluate()
-
-    #     if eval >= beta:
-    #         return beta
-    #     alpha = max(alpha, eval)
-
-    #     moves = self.get_capture_moves()
-
-    #     for move in moves:
-    #         self.board.push(move)
-    #         eval = -1 * self.search_all_captures(-beta, -alpha)
-    #         self.board.pop()
-
-    #         if eval >= beta:
-    #             return beta
-    #         alpha = max(alpha, eval)
-
-    #     return alpha
+            if eval >= beta:
+                return beta
+            alpha = max(eval, alpha)
+        return alpha
 
     # def check_endgame(self):
     #     '''
@@ -299,34 +251,40 @@ class ChessEngine:
     #                 self.value_b_king[s] = king_tables[s]
     #             self.not_endgame = False
 
-    def order_moves(self):
+    def order_moves(self, moves):
         '''
         Order all legal moves in a position by prioritizing captures,
         promoitions, checks, and castlings.
         '''
-        moves = list(self.board.legal_moves)
         move_score = 0
         sorted_orders = {}
         ordered_moves = {}
-
-        capture_moves = {}
 
         for move in moves:  
             move_piece = self.board.piece_type_at(move.from_square)
             capture_piece = self.board.piece_type_at(move.to_square)
             
-            # if capture_piece != None:
-            #     move_score = self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
-    
-
-            if self.board.is_castling(move):
-                move_score += 1
+            if capture_piece != None:
+                move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
             
             if self.board.gives_check(move):
-                move_score += 10
+                move_score += 50
 
             ordered_moves[move] = move_score
             sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
 
         return list(sorted_orders.keys())
     
+
+    def _get_piece_value(self, piece_type):
+        if piece_type == chess.PAWN:
+            return 105
+        elif piece_type == chess.KNIGHT:
+            return 320
+        elif piece_type == chess.BISHOP:
+            return 330
+        elif piece_type == chess.ROOK:
+            return 500
+        elif piece_type == chess.QUEEN:
+            return 900
+        return 0

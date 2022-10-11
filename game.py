@@ -68,11 +68,11 @@ while True:
                         chess_engine.board.push(move)
                         break
     else:
-        move, eval = chess_engine.alphabeta(5)
-        print(f"\n{chess_engine.board.san(move)}; Eval: {eval}")
-        chess_engine.board.push(move)
+        eval = chess_engine.alphabeta(4)
+        print(f"\n{chess_engine.board.san(chess_engine.best_move)}")
+        chess_engine.board.push(chess_engine.best_move)
     
-    print(chess_engine.board)
+    #print(chess_engine.board)
         
     # Human Move
     while True:
