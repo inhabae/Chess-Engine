@@ -1,8 +1,8 @@
 import chess
+import logging
 
 class ChessEngine:
     def __init__(self, depth):
-        
         self.board = chess.Board()  
         self.best_move = None
         self.depth = depth
@@ -125,6 +125,7 @@ class ChessEngine:
         return eval if self.board.turn == chess.WHITE else -eval
 
     def alphabeta(self, alpha, beta, depth):
+        logging.info(f'alphabeta(): depth={depth}')
         # check for checkmate/draw
         if self.board.is_game_over(): 
             if self.board.is_check():
@@ -134,22 +135,21 @@ class ChessEngine:
         # TODO: how to check if 3fold rep is good for bad
         # if self.board.can_claim_threefold_repetition():
         #     return float('-inf') if self.evaluate() < 0 else 0
+        
+        
+        if depth == 0: return self.quiescence_search(alpha, beta)
 
-        if depth == 0:
-            return self.evaluate()
-            # need quiescence search, change later
-            #return self.quiescence_search(alpha, beta)
-
-        for move in self.board.generate_legal_moves():
-
+        moves = self.order_moves()
+        if depth == self.depth:
+            self.best_move = moves[0]
+        for move in moves:
             ### Debugging Purposes
             # if depth == 4:
             #     print(f"Move {self.board.san(move)} is being considered...")
             self.board.push(move)
             eval = -self.alphabeta(-beta, -alpha, depth-1)
             self.board.pop()
-            if eval >= beta:
-                return beta
+            if eval >= beta: return beta
             if eval > alpha:
                 alpha = eval
                 if depth == self.depth:
@@ -157,56 +157,62 @@ class ChessEngine:
                     # print(f"Depth {depth}: Move: {self.board.san(self.best_move)} is best with eval: {eval}")
         return alpha
 
-    # def quiescence_search(self, alpha, beta):
-    #     if not self.board.is_check():
-    #         stand_pat = self.evaluate()
-    #         if stand_pat >= beta:
-    #             return beta
-    #         if alpha < stand_pat:
-    #             alpha = stand_pat
+
+    # TODO: need to deal with CHECK horizon effects..?
+    def quiescence_search(self, alpha, beta):
+        stand_pat = self.evaluate()
+        if stand_pat >= beta: return beta
+        if alpha < stand_pat: alpha = stand_pat
+        for capture in self.board.generate_legal_captures():
+            self.board.push(capture)
+            eval = -self.quiescence_search(-beta, -alpha)
+            self.board.pop()
+            if eval >= beta: return beta
+            alpha = max(alpha, eval)
+        return alpha
+    
+    def order_moves(self):
+        sorted_orders = {}
+        ordered_moves = {}
+        for move in self.board.generate_legal_moves(): 
+            move_score = 0 
+            move_piece = self.board.piece_type_at(move.from_square)
+            capture_piece = self.board.piece_type_at(move.to_square)
+            # MVV/LVA
+            if capture_piece:
+                move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
+            # Checks
+            if self.board.gives_check(move) :
+                move_score += 1
+            ordered_moves[move] = move_score
+            # Promotions
+            if move_piece == chess.PAWN and chess.square_rank(move.to_square) % 7 == 0:
+                move_score += 100
+            sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
+        return list(sorted_orders.keys())
+
+    def print_board(self):
+        for rank in range(7,-1,-1):
+            for file in range(8):
+                square = rank * 8 + file
+                piece = self.board.piece_at(square)
+                if piece:
+                    print(self.board.piece_at(square).unicode_symbol(), end=' ')
+                else:
+                    print("+", end=' ')
+            print()
+
+    def _get_piece_value(self, piece_type):
+        if piece_type == chess.PAWN:
+            return 100
+        elif piece_type == chess.KNIGHT:
+            return 320
+        elif piece_type == chess.BISHOP:
+            return 330
+        elif piece_type == chess.ROOK:
+            return 500
+        elif piece_type == chess.QUEEN:
+            return 900
+        elif piece_type == chess.KING:
+            return 20000
         
-    #     # checking checks does not improve the outcome...    
-    #     moves = list(self.board.generate_legal_captures())
-    #     #moves = capture_moves + self._generate_check_moves()
-
-    #     for move in self.order_moves(moves):
-    #         self.board.push(move)
-    #         eval = -self.quiescence_search(-beta, -alpha)
-    #         self.board.pop()
-
-    #         if eval >= beta:
-    #             return beta
-    #         alpha = max(eval, alpha)
-    #     return alpha
-
-    # def order_moves(self, moves):
-    #     '''
-    #     Order all legal moves in a position by prioritizing captures,
-    #     promoitions, checks, and castlings.
-    #     '''
-    #     move_score = 0
-    #     sorted_orders = {}
-    #     ordered_moves = {}
-
-    #     for move in moves:  
-    #         move_piece = self.board.piece_type_at(move.from_square)
-    #         capture_piece = self.board.piece_type_at(move.to_square)
-            
-    #         if capture_piece != None:
-    #             move_score = 10 * self._get_piece_value(capture_piece) - self._get_piece_value(move_piece)
-            
-    #         if self.board.gives_check(move):
-    #             move_score += 3
-
-    #         ordered_moves[move] = move_score
-    #         sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
-
-    #     return list(sorted_orders.keys())
-
-
-    # def _generate_check_moves(self):
-    #     moves = []
-    #     for move in self.board.legal_moves:
-    #         if self.board.gives_check(move):
-    #             moves.append(move)
-    #     return moves
