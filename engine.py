@@ -5,27 +5,17 @@ class ChessEngine:
     def __init__(self, depth=2):
         
         self.board = chess.Board()  
-        self.eval = -math.inf 
+        self.eval = -math.inf # what to set this as
         self.best_move = None
         self.depth = depth
 
-        ### For Debugging
+        ### Debugging Purposes
         self.boards_explored = 0
 
         ### Piece Value according to their Positions
         # https://www.chessprogramming.org/Simplified_Evaluation_Function
-        self.black_pawn_table = [
-            0,  0,  0,  0,  0,  0,  0,  0,
-            50, 50, 50, 50, 50, 50, 50, 50,
-            10, 10, 20, 30, 30, 20, 10, 10,
-            5,  5, 10, 25, 25, 10,  5,  5,
-            0,  0,  0, 20, 20,  0,  0,  0,
-            5, -5,-10,  0,  0,-10, -5,  5,
-            5, 10, 10,-20,-20, 10, 10,  5,
-            0,  0,  0,  0,  0,  0,  0,  0
-        ]
         self.white_pawn_table = [
-            0,  0,  0,  0,  0,  0,  0,  0,
+            0,  0,  0,  0,  0,  0,  0,  0, 
             5, 10, 10,-20,-20, 10, 10,  5,
             5, -5,-10,  0,  0,-10, -5,  5,
             0,  0,  0, 20, 20,  0,  0,  0,
@@ -34,6 +24,11 @@ class ChessEngine:
             50, 50, 50, 50, 50, 50, 50, 50,
             0,  0,  0,  0,  0,  0,  0,  0
         ]
+
+        # Black piece-square table does not need to be a deepcopy 
+        # since the values will not be modified.
+        self.black_pawn_table = self.white_pawn_table[::-1]
+        
         self.white_knight_table = [
             -50, -40, -30, -30, -30, -30, -40, -50, 
             -40, -20, 0, 5, 5, 0, -20, -40, 
@@ -44,16 +39,7 @@ class ChessEngine:
             -40, -20, 0, 0, 0, 0, -20, -40, 
             -50, -40, -30, -30, -30, -30, -40, -50, 
         ]
-        self.black_knight_table = [
-            -50,-40,-30,-30,-30,-30,-40,-50,
-            -40,-20,  0,  0,  0,  0,-20,-40,
-            -30,  0, 10, 15, 15, 10,  0,-30,
-            -30,  5, 15, 20, 20, 15,  5,-30,
-            -30,  0, 15, 20, 20, 15,  0,-30,
-            -30,  5, 10, 15, 15, 10,  5,-30,
-            -40,-20,  0,  5,  5,  0,-20,-40,
-            -50,-40,-30,-30,-30,-30,-40,-50,
-        ]
+        self.black_knight_table = self.white_knight_table[::-1]
         self.white_bishop_table = [
             -20,-10,-10,-10,-10,-10,-10,-20,
             -10,  5,  0,  0,  0,  0,  5,-10,
@@ -64,26 +50,7 @@ class ChessEngine:
             -10,  0,  0,  0,  0,  0,  0,-10,
             -20,-10,-10,-10,-10,-10,-10,-20,
         ]
-        self.black_bishop_table = [
-            -20,-10,-10,-10,-10,-10,-10,-20,
-            -10,  0,  0,  0,  0,  0,  0,-10,
-            -10,  0,  5, 10, 10,  5,  0,-10,
-            -10,  5,  5, 10, 10,  5,  5,-10,
-            -10,  0, 10, 10, 10, 10,  0,-10,
-            -10, 10, 10, 10, 10, 10, 10,-10,
-            -10,  5,  0,  0,  0,  0,  5,-10,
-            -20,-10,-10,-10,-10,-10,-10,-20,
-        ]
-        self.black_rook_table = [
-            0,  0,  0,  0,  0,  0,  0,  0,
-            5, 10, 10, 10, 10, 10, 10,  5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            -5,  0,  0,  0,  0,  0,  0, -5,
-            0,  0,  0,  5,  5,  0,  0,  0
-        ]
+        self.black_bishop_table = self.white_bishop_table[::-1]
         self.white_rook_table = [
             0,  0,  0,  5,  5,  0,  0,  0,
             -5,  0,  0,  0,  0,  0,  0, -5,
@@ -94,26 +61,18 @@ class ChessEngine:
             5, 10, 10, 10, 10, 10, 10,  5,
             0,  0,  0,  0,  0,  0,  0,  0
         ]
+        self.black_rook_table = self.white_rook_table[::-1]
         self.white_queen_table = [
-            -20, -10, -10, -5, -5, -10, -10, -20, 
-            -10, 0, 0, 0, 0, 0, 0, -10, 
-            -10, 0, 5, 5, 5, 5, 0, -10, 
-            -5, 0, 5, 5, 5, 5, 0, -5, 
-            0, 0, 5, 5, 5, 5, 0, -5, 
-            -10, 5, 5, 5, 5, 5, 0, -10, 
+            -20,-10,-10, -5, -5,-10,-10,-20,
             -10, 0, 5, 0, 0, 0, 0, -10, 
-            -20, -10, -10, -5, -5, -10, -10, -20, 
+            -10,  5,  5,  5,  5,  5,  0,-10,
+            0,  0,  5,  5,  5,  5,  0, -5,
+            -5,  0,  5,  5,  5,  5,  0, -5,
+            -10,  0,  5,  5,  5,  5,  0,-10,
+            -10,  0,  0,  0,  0,  0,  0,-10, 
+            -20,-10,-10, -5, -5,-10,-10,-20,
         ]
-        self.black_queen_table = [
-            -20, -10, -10, -5, -5, -10, -10, -20, 
-            -10, 0, 0, 0, 0, 5, 0, -10, 
-            -10, 0, 5, 5, 5, 5, 5, -10, 
-            -5, 0, 5, 5, 5, 5, 0, 0, 
-            -5, 0, 5, 5, 5, 5, 0, -5, 
-            -10, 0, 5, 5, 5, 5, 0, -10, 
-            -10, 0, 0, 0, 0, 0, 0, -10, 
-            -20, -10, -10, -5, -5, -10, -10, -20, 
-        ]
+        self.black_queen_table = self.white_queen_table[::-1]
         self.white_king_table = [
             20, 30, 10, 0, 0, 10, 30, 20, 
             20, 20, 0, 0, 0, 0, 20, 20, 
@@ -124,16 +83,7 @@ class ChessEngine:
             -30, -40, -40, -50, -50, -40, -40, -30, 
             -30, -40, -40, -50, -50, -40, -40, -30, 
         ]
-        self.black_king_table = [
-            -30, -40, -40, -50, -50, -40, -40, -30, 
-            -30, -40, -40, -50, -50, -40, -40, -30, 
-            -30, -40, -40, -50, -50, -40, -40, -30, 
-            -30, -40, -40, -50, -50, -40, -40, -30, 
-            -20, -30, -30, -40, -40, -30, -30, -20, 
-            -10, -20, -20, -20, -20, -20, -20, -10, 
-            20, 20, 0, 0, 0, 0, 20, 20, 
-            20, 30, 10, 0, 0, 10, 30, 20, 
-        ]
+        self.black_king_table = self.white_king_table[::-1]
     # def set_depth(self, depth):
     #     self.depth = depth
     
@@ -141,7 +91,8 @@ class ChessEngine:
     def set_board_with_FEN(self, fen):
         self.board = chess.Board(fen)
     
-
+    # Return board evaluation based on material and positional advantages
+    # Evaluation is subjective to the player (+ is winning, - is losing)
     def evaluate(self):
         eval = 0
         for square, piece in self.board.piece_map().items():
@@ -156,13 +107,12 @@ class ChessEngine:
             elif piece.piece_type == chess.ROOK and piece.color == chess.BLACK:
                 eval -= self.black_rook_table[square]
             elif piece.piece_type == chess.QUEEN:
-                eval = self.white_queen_table[square] if piece.color == chess.WHITE else -self.black_queen_table[square]
+                eval += self.white_queen_table[square] if piece.color == chess.WHITE else -self.black_queen_table[square]
             elif piece.piece_type == chess.KING and piece.color == chess.WHITE:
                 eval += self.white_king_table[square]
             elif piece.piece_type == chess.KING and piece.color == chess.BLACK:
                 eval -= self.black_king_table[square]
-        return eval if self.board.turn == chess.WHITE else -eval # TODO: see if eval should be based subjective or objective
-        
+        return eval if self.board.turn == chess.WHITE else -eval
 
     def negamax(self, depth):
         '''
