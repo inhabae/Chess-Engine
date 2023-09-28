@@ -6,7 +6,8 @@ class ChessEngine:
         self.board = chess.Board()  
         self.best_move = None
         self.depth = depth
-
+        self.castled = [0,0]
+        
         ### Debugging Purposes
         self.boards_explored = 0
 
@@ -92,7 +93,9 @@ class ChessEngine:
     # Material Evaluation from: https://www.chessprogramming.org/Simplified_Evaluation_Function
     def evaluate(self):
         eval = 0
-        for square, piece in self.board.piece_map().items():
+        pm = self.board.piece_map()
+        # Material + Position Evaluation
+        for square, piece in pm.items():
             if piece.piece_type == chess.PAWN:
                 if piece.color == chess.WHITE:
                     eval += (100 + self.white_pawn_table[square])
@@ -122,10 +125,53 @@ class ChessEngine:
                 eval += (self.white_king_table[square] + 20000)
             elif piece.piece_type == chess.KING and piece.color == chess.BLACK:
                 eval -= (self.black_king_table[square] + 20000)
+
+        # King Safety Evaluation
+        ### ONLY WORKS IN GAME, NOT A SEPARATE ANALYSIS
+        white_castle, black_castle = self.castled[0], self.castled[1]
+        
+        # if white castled
+        if white_castle == 1: # kingside
+            for square in [chess.F2, chess.G2, chess.H2]:
+                if pm.get(square, None): 
+                    if pm[square].piece_type == chess.PAWN:
+                        eval += 30
+            for square in [chess.F3, chess.G3, chess.H3]:
+                if pm.get(square, None): 
+                    if pm[square].piece_type == chess.PAWN:
+                        eval += 15     
+        elif white_castle == 2: # queenside
+            for square in [chess.A2, chess.B2, chess.C2]:
+                if pm.get(square, None): # if there's a piece at the square
+                    if pm[square].piece_type == chess.PAWN:
+                        eval += 30
+            for square in [chess.A3, chess.B3, chess.C3]:
+                if pm.get(square, None): 
+                    if pm[square].piece_type == chess.PAWN:
+                        eval += 15     
+    
+        if black_castle == 1: # kingside
+            for square in [chess.F7, chess.G7, chess.H7]:
+                if pm.get(square, None): 
+                    if pm[square].piece_type == chess.PAWN:
+                        eval -= 30
+            for square in [chess.F6, chess.G6, chess.H6]:
+                if pm.get(square, None): 
+                    if pm[square].piece_type == chess.PAWN:
+                        eval -= 15     
+        elif black_castle == 2: # queenside
+            for square in [chess.A7, chess.B7, chess.C7]:
+                if pm.get(square, None): # if there's a piece at the square
+                    if pm[square].piece_type == chess.PAWN:
+                        eval -= 30
+            for square in [chess.A6, chess.B6, chess.C6]:
+                if pm.get(square, None): 
+                    if pm[square].piece_type == chess.PAWN:
+                        eval -= 15         
         return eval if self.board.turn == chess.WHITE else -eval
+    
 
     def alphabeta(self, alpha, beta, depth):
-        logging.info(f'alphabeta(): depth={depth}')
         # check for checkmate/draw
         if self.board.is_game_over(): 
             if self.board.is_check():
@@ -133,8 +179,8 @@ class ChessEngine:
             return 0 # draw  
         
         # TODO: how to check if 3fold rep is good for bad
-        # if self.board.can_claim_threefold_repetition():
-        #     return float('-inf') if self.evaluate() < 0 else 0
+        if self.board.can_claim_draw():
+            return 0
         
         
         if depth == 0: return self.quiescence_search(alpha, beta)
@@ -143,29 +189,34 @@ class ChessEngine:
         if depth == self.depth:
             self.best_move = moves[0]
         for move in moves:
-            ### Debugging Purposes
-            # if depth == 4:
-            #     print(f"Move {self.board.san(move)} is being considered...")
+            self._check_castling(move)
             self.board.push(move)
-            eval = -self.alphabeta(-beta, -alpha, depth-1)
+            eval = -1 * self.alphabeta(-beta, -alpha, depth-1)
+            self._uncheck_castling(move)
             self.board.pop()
+
+            # Debug
+            # for i in range(self.depth-depth): 
+            #     print('  ',end='')
+            # print(f"Depth {depth}: Move: {self.board.san(move)}. Eval: {eval}")
+
+
             if eval >= beta: return beta
             if eval > alpha:
                 alpha = eval
                 if depth == self.depth:
                     self.best_move = move
-                    # print(f"Depth {depth}: Move: {self.board.san(self.best_move)} is best with eval: {eval}")
         return alpha
 
-
     # TODO: need to deal with CHECK horizon effects..?
+    # TODO: does this need check uncheck castling?
     def quiescence_search(self, alpha, beta):
         stand_pat = self.evaluate()
         if stand_pat >= beta: return beta
         if alpha < stand_pat: alpha = stand_pat
         for capture in self.board.generate_legal_captures():
             self.board.push(capture)
-            eval = -self.quiescence_search(-beta, -alpha)
+            eval = -1 * self.quiescence_search(-beta, -alpha)
             self.board.pop()
             if eval >= beta: return beta
             alpha = max(alpha, eval)
@@ -216,3 +267,15 @@ class ChessEngine:
         elif piece_type == chess.KING:
             return 20000
         
+    def _check_castling(self, move):
+        if self.board.is_castling(move):
+            if self.board.is_kingside_castling(move):
+                self.castled[int(not self.board.turn)] = 1
+            else:
+                self.castled[int(not self.board.turn)] = 2
+    def _uncheck_castling(self, move):
+        if self.board.is_castling(move):
+            if self.board.is_kingside_castling(move):
+                self.castled[int(not self.board.turn)] = 0
+            else:
+                self.castled[int(not self.board.turn)] = 0

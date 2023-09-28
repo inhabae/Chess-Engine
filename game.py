@@ -1,18 +1,16 @@
 import engine as engine
-import logging
 
 class Undo(Exception):
     def __init__(self):
         pass
 
-DEPTH = 4
-logging.basicConfig(filename='log', level=logging.DEBUG)
-
+DEPTH = 6
 def opponent_turn(chess_engine):
     while True:
         try:
             user_input = input("Enter opponent's move ('undo' to undo the last input): ")
             if user_input == 'undo':
+                # TODO: check castling pop
                 chess_engine.board.pop()
                 chess_engine.board.pop()
                 raise Undo
@@ -36,6 +34,7 @@ def engine_turn(chess_engine):
 
 # Initializing the engine
 chess_engine = engine.ChessEngine(DEPTH)
+chess_engine.set_board_with_FEN('k7/2PPPPPP/8/8/8/8/2r1r3/1R1K1R2 b - - 12 7')
 
 # Assign the engine color, white or black
 while True:
