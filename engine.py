@@ -86,7 +86,7 @@ class ChessEngine:
     
     # TODO: ensure valid fen ?
     def set_board_with_FEN(self, fen):
-        self.board = chess.Board(fen)
+        self.board = chess.Board(fen) 
     
     # Return board evaluation based on material and positional advantages
     # Evaluation is subjective to the player (+ is winning, - is losing)
