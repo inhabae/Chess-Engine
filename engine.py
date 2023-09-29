@@ -188,7 +188,7 @@ class ChessEngine:
         
         if depth == 0: return self.quiescence_search(alpha, beta)
 
-        moves = self.order_moves()
+        moves = self.order_moves(self.board.generate_legal_moves())
         if depth == self.depth:
             self.best_move = moves[0]
         for move in moves:
@@ -214,10 +214,11 @@ class ChessEngine:
     # TODO: need to deal with CHECK horizon effects..?
     # TODO: does this need check uncheck castling?
     def quiescence_search(self, alpha, beta):
+        self.boards_explored += 1
         stand_pat = self.evaluate()
         if stand_pat >= beta: return beta
         if alpha < stand_pat: alpha = stand_pat
-        for capture in self.board.generate_legal_captures():
+        for capture in self.order_moves(self.board.generate_legal_captures()):
             self.board.push(capture)
             eval = -1 * self.quiescence_search(-beta, -alpha)
             self.board.pop()
@@ -225,10 +226,10 @@ class ChessEngine:
             alpha = max(alpha, eval)
         return alpha
     
-    def order_moves(self):
+    def order_moves(self, moves):
         sorted_orders = {}
         ordered_moves = {}
-        for move in self.board.generate_legal_moves(): 
+        for move in moves: 
             move_score = 0 
             move_piece = self.board.piece_type_at(move.from_square)
             capture_piece = self.board.piece_type_at(move.to_square)
@@ -274,15 +275,13 @@ class ChessEngine:
                     -50,-40,-30,-20,-20,-30,-40,-50
                 ]
                 self.black_king_table = self.white_king_table[::-1]
-                self.check_endgame_wincon = True
+                self.check_endgame = True
 
     def check_endgame_wincon(self):
         if self.endgame: 
             if len(self.board.piece_map().keys()) <= 4:
                 self.set_depth = 10
-
-
-
+                print("YURHHHH")
 
     def print_board(self):
         for rank in range(7,-1,-1):
