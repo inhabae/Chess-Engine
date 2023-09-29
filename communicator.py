@@ -4,10 +4,10 @@ Play a game between two engines. Save a PGN of the game.
 
 import engine as engine2
 import game as game2
-import engine1 as engine1
+import engine_2022 as engine_2022
 import chess
 
-engineOne = engine1.ChessEngine(depth=4)
+engineOne = engine_2022.ChessEngine(depth=4)
 engineTwo = engine2.ChessEngine(depth=4)
 
 # choose which engine is W/B
