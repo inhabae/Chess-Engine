@@ -1,3 +1,4 @@
+import chess
 import engine as engine
 
 class Undo(Exception):
@@ -5,6 +6,9 @@ class Undo(Exception):
         pass
 
 DEPTH = 4
+FEN = chess.STARTING_FEN
+
+
 def opponent_turn(chess_engine):
     while True:
         try:
@@ -36,6 +40,7 @@ def engine_turn(chess_engine):
 def main():
 # Initializing the engine
     chess_engine = engine.ChessEngine(DEPTH)
+    chess_engine.set_board_with_FEN(FEN)
 
     # Assign the engine color, white or black
     while True:
