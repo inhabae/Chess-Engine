@@ -3,6 +3,7 @@ Play a game between two engines. Save a PGN of the game.
 """
 
 import engine as engine2
+import game as game2
 import engine1 as engine1
 import chess
 
@@ -27,19 +28,16 @@ if engineOne_color == 'white':
         if engineOne.board.is_game_over(): break
         engineTwo.board = engineOne.board
 
-        engineTwo.alphabeta(float('-inf'), float('inf'), 4)
-        print(engineTwo.board.san(engineTwo.best_move)) # putting end param here does not print until while loop ends
-        engineTwo.board.push(engineTwo.best_move)
+        game2.engine_play(engineTwo)
         if engineTwo.board.is_game_over(): break
         engineOne.board = engineTwo.board
         move_count += 1
 else:
     while True:
-        engineTwo.alphabeta(float('-inf'), float('inf'), 4)
-        print(f"{move_count}", end=' ')
-        engineTwo.board.push(engineTwo.best_move)
+        game2.engine_play(engineTwo)
         if engineTwo.board.is_game_over(): break
         engineOne.board = engineTwo.board
+        
         engineOne.alphabeta(4)
         engineOne.board.push(engineOne.best_move)
         if engineOne.board.is_game_over(): break

@@ -7,7 +7,8 @@ class ChessEngine:
         self.best_move = None
         self.depth = depth
         self.castled = [0,0]
-        
+        self.endgame = False
+        self.endgame_wincon = False
         ### Debugging Purposes
         self.boards_explored = 0
 
@@ -131,43 +132,46 @@ class ChessEngine:
         white_castle, black_castle = self.castled[0], self.castled[1]
         
         # if white castled
-        if white_castle == 1: # kingside
+        if white_castle == 0:
+            eval -= 30
+        elif white_castle == 1: # kingside
             for square in [chess.F2, chess.G2, chess.H2]:
                 if pm.get(square, None): 
                     if pm[square].piece_type == chess.PAWN:
-                        eval += 30
+                        eval += 40
             for square in [chess.F3, chess.G3, chess.H3]:
                 if pm.get(square, None): 
                     if pm[square].piece_type == chess.PAWN:
-                        eval += 15     
+                        eval += 20    
         elif white_castle == 2: # queenside
             for square in [chess.A2, chess.B2, chess.C2]:
                 if pm.get(square, None): # if there's a piece at the square
                     if pm[square].piece_type == chess.PAWN:
-                        eval += 30
+                        eval += 40
             for square in [chess.A3, chess.B3, chess.C3]:
                 if pm.get(square, None): 
                     if pm[square].piece_type == chess.PAWN:
-                        eval += 15     
-    
-        if black_castle == 1: # kingside
+                        eval += 20     
+        if black_castle == 0:
+            eval += 30
+        elif black_castle == 1: # kingside
             for square in [chess.F7, chess.G7, chess.H7]:
                 if pm.get(square, None): 
                     if pm[square].piece_type == chess.PAWN:
-                        eval -= 30
+                        eval -= 40
             for square in [chess.F6, chess.G6, chess.H6]:
                 if pm.get(square, None): 
                     if pm[square].piece_type == chess.PAWN:
-                        eval -= 15     
+                        eval -= 20    
         elif black_castle == 2: # queenside
             for square in [chess.A7, chess.B7, chess.C7]:
                 if pm.get(square, None): # if there's a piece at the square
                     if pm[square].piece_type == chess.PAWN:
-                        eval -= 30
+                        eval -= 40
             for square in [chess.A6, chess.B6, chess.C6]:
                 if pm.get(square, None): 
                     if pm[square].piece_type == chess.PAWN:
-                        eval -= 15         
+                        eval -= 20        
         return eval if self.board.turn == chess.WHITE else -eval
     
 
@@ -175,13 +179,12 @@ class ChessEngine:
         # check for checkmate/draw
         if self.board.is_game_over(): 
             if self.board.is_check():
-                return float('-inf')
+                return -30000 + (self.depth-depth) * 1000 # to find quickest mate 
             return 0 # draw  
         
         # TODO: how to check if 3fold rep is good for bad
         if self.board.can_claim_draw():
             return 0
-        
         
         if depth == 0: return self.quiescence_search(alpha, beta)
 
@@ -241,6 +244,45 @@ class ChessEngine:
                 move_score += 100
             sorted_orders = dict(sorted(ordered_moves.items(), key=lambda x:x[1], reverse=True))
         return list(sorted_orders.keys())
+    
+    def check_endgame(self):
+        if not self.endgame:
+            queen_num = 0
+            rook_num = 0
+            minor_piece_num = 0
+            for piece in self.board.piece_map().values():
+                ptype = piece.piece_type
+                if ptype == chess.PAWN or ptype == chess.KING:
+                    pass
+                elif ptype == chess.QUEEN:
+                    queen_num += 1
+                elif ptype == chess.ROOK:
+                    rook_num += 1
+                else:
+                    minor_piece_num += 1
+
+            if queen_num == 0 or (minor_piece_num <= 2 and rook_num < 0):
+                self.endgame = True
+                self.white_king_table = [
+                    -50,-30,-30,-30,-30,-30,-30,-50,
+                    -30,-30,  0,  0,  0,  0,-30,-30,
+                    -30,-10, 20, 30, 30, 20,-10,-30,
+                    -30,-10, 30, 40, 40, 30,-10,-30,
+                    -30,-10, 30, 40, 40, 30,-10,-30,
+                    -30,-10, 20, 30, 30, 20,-10,-30,
+                    -30,-20,-10,  0,  0,-10,-20,-30,
+                    -50,-40,-30,-20,-20,-30,-40,-50
+                ]
+                self.black_king_table = self.white_king_table[::-1]
+                self.check_endgame_wincon = True
+
+    def check_endgame_wincon(self):
+        if self.endgame: 
+            if len(self.board.piece_map().keys()) <= 4:
+                self.set_depth = 10
+
+
+
 
     def print_board(self):
         for rank in range(7,-1,-1):
@@ -269,9 +311,9 @@ class ChessEngine:
         
     def _check_castling(self, move):
         if self.board.is_castling(move):
-            if self.board.is_kingside_castling(move):
+            if self.board.is_kingside_castling(move): # kingside
                 self.castled[int(not self.board.turn)] = 1
-            else:
+            else: # queenside
                 self.castled[int(not self.board.turn)] = 2
     def _uncheck_castling(self, move):
         if self.board.is_castling(move):
