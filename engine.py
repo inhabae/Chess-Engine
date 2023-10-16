@@ -9,7 +9,6 @@ class ChessEngine:
     def __init__(self, depth):
         self.board = chess.Board() 
         self.best_move = None # move that will be played
-        self.pv = []
         self.depth = depth
         self.castled = [0,0]
         self.endgame = False # see check_endgame()
@@ -188,13 +187,25 @@ class ChessEngine:
         # check for checkmate/draw
         if self.board.is_game_over(): 
             if self.board.is_check():
-                return -30000 + (self.depth-depth) * 1000 # to find quickest mate 
+                eval = -30000
+                print(self.board)
+                print(eval)
+                self.record_hash(eval, HASH_EXACT, depth)
+                print(self.transposition_table[self.zobrist_hash()])
+                return eval
             return 0  
         if self.board.can_claim_draw():
             return 0
-        eval = self.probe_hash(alpha, beta, depth)
-        if eval:
-            return eval
+        
+        ev = self.probe_hash(alpha, beta, depth)
+        if ev:
+            zh = self.zobrist_hash()
+            if self.transposition_table[zh][1] == HASH_ALPHA:
+                alpha = ev
+            elif self.transposition_table[zh][1] == HASH_BETA:
+                beta = ev
+            else:
+                return ev
         # Transposition Table
         if depth == 0: 
             eval = self.quiescence_search(alpha, beta)
@@ -207,12 +218,18 @@ class ChessEngine:
             self._check_castling(move)
             self.board.push(move)
             eval = -1 * self.alphabeta(-beta, -alpha, depth-1)
+            if abs(eval) > 15000: # mate founded
+                if eval > 0:
+                    eval -= 1000
+                else:
+                    eval += 1000
+
             self._uncheck_castling(move)
             self.board.pop()
             if eval >= beta: 
                 self.record_hash(beta, HASH_BETA, depth)
                 return beta
-            if eval > alpha:    
+            if eval > alpha: 
                 if depth == self.depth:
                     self.best_move = move
                 hashf = HASH_EXACT
@@ -223,7 +240,6 @@ class ChessEngine:
     # TODO: need to deal with CHECK horizon effects..?
     # TODO: does this need check uncheck castling?
     def quiescence_search(self, alpha, beta):
-        hashf = HASH_ALPHA
         stand_pat = self.evaluate()
         if stand_pat >= beta: return beta
         if stand_pat > alpha: alpha = stand_pat
@@ -291,11 +307,12 @@ class ChessEngine:
                 ]
                 self.black_king_table = self.white_king_table[::-1]
 
-    def check_endgame_wincon(self):
+    def check_super_endgame(self):
         if self.endgame: 
-            if len(self.board.piece_map().keys()) <= 4:
-                self.set_depth = 10
-                print("ENDGAME DEEP SEARCH ACTIVATED")
+            if self.depth < 8:
+                if len(self.board.piece_map().keys()) <= 6:
+                    self.set_depth(8)
+                    print("ENDGAME DEEP SEARCH ACTIVATED")
     
     # TODO: IMPLEMENT THIS
     # def limit_king_movement(self):
