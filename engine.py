@@ -5,27 +5,36 @@ HASH_EXACT = 0
 HASH_ALPHA = 1
 HASH_BETA = 2
 
+END_DEPTH = 100
+
+class TranspositionEntry:
+    def __init__(self, key, depth, value, flag, best_move):
+        self.key = key      # Zobrist hash key
+        self.depth = depth  # Search depth when this entry was stored
+        self.value = value  # score value
+        self.flag = flag    # Type of node (exact, alpha, beta)
+        self.best_move = best_move  # Best move
+
 class ChessEngine:
     def __init__(self, depth):
         self.board = chess.Board() 
-        self.best_move = None # move that will be played
+        self.best_move = None
         self.depth = depth
         self.castled = [0,0]
-        self.endgame = False # see check_endgame()
+        self.is_endgame = False
 
-         # index 1: depth, index 2: flags, index 3: eval, 
+        # Initializing Transposition Table
+        # Key: hash, Value: TranspositionEntry
         self.transposition_table = dict()
 
-        self.zh = []
+        # Initializing Zobrist Hashing
+        self.compute_zobrist_hashing = []
         random.seed(100)
         for i in range(781):
-            self.zh.append(random.getrandbits(64))
-
-        ### Debugging Purposes
-        self.boards_explored = 0
+            self.compute_zobrist_hashing.append(random.getrandbits(64))
 
         ### Piece Value according to their Positions
-        # https://www.chessprogramming.org/Simplified_Evaluation_Function
+        # https://www.chessprogramming.org/Simplified_score_Function
         self.white_pawn_table = [
             0,  0,  0,  0,  0,  0,  0,  0, 
             5, 10, 10,-20,-20, 10, 10,  5,
@@ -38,14 +47,14 @@ class ChessEngine:
         ]
         self.black_pawn_table = self.white_pawn_table[::-1]
         self.white_knight_table = [
-            -50, -40, -30, -30, -30, -30, -40, -50, 
+            -50, -30, -30, -30, -30, -30, -30, -50, 
             -40, -20, 0, 5, 5, 0, -20, -40, 
             -30, 5, 10, 15, 15, 10, 5, -30, 
             -30, 0, 15, 20, 20, 15, 0, -30, 
             -30, 5, 15, 20, 20, 15, 5, -30, 
             -30, 0, 10, 15, 15, 10, 0, -30, 
             -40, -20, 0, 0, 0, 0, -20, -40, 
-            -50, -40, -30, -30, -30, -30, -40, -50, 
+            -50, -30, -30, -30, -30, -30, -30, -50, 
         ]
         self.black_knight_table = self.white_knight_table[::-1]
         self.white_bishop_table = [
@@ -92,163 +101,188 @@ class ChessEngine:
             -30, -40, -40, -50, -50, -40, -40, -30
         ]
         self.black_king_table = self.white_king_table[::-1]
-    def set_depth(self, depth):
-        self.depth = depth
+    def set_depth(self, new_depth):
+        self.depth = new_depth
     def set_board_with_FEN(self, fen):
         self.board = chess.Board(fen) 
     
-    # Return board evaluation based on material and positional advantages
-    # Evaluation is subjective to the player (+ is winning, - is losing)
-    # Material Evaluation from: https://www.chessprogramming.org/Simplified_Evaluation_Function
-    def evaluate(self):
-        eval = 0
-        pm = self.board.piece_map()
-        # Material + Position Evaluation
-        for square, piece in pm.items():
+    # Return board score based on material, positional advantages, etc.
+    # Score is subjective to the player (+ is winning, - is losing)
+    # Material score from: https://www.chessprogramming.org/Simplified_score_Function
+    def get_score(self):
+        score = 0
+        piece_map = self.board.piece_map()
+        # Material + Position score
+        for square, piece in piece_map.items():
             if piece.piece_type == chess.PAWN:
                 if piece.color == chess.WHITE:
-                    eval += (100 + self.white_pawn_table[square])
+                    score += (100 + self.white_pawn_table[square])
                 else:
-                    eval -= (100 + self.black_pawn_table[square])
+                    score -= (100 + self.black_pawn_table[square])
             elif piece.piece_type == chess.KNIGHT:
                 if piece.color == chess.WHITE:
-                    eval += (320 + self.white_knight_table[square])
+                    score += (320 + self.white_knight_table[square])
                 else:
-                    eval -= (320 + self.black_knight_table[square])
+                    score -= (320 + self.black_knight_table[square])
             elif piece.piece_type == chess.BISHOP:
                 if piece.color == chess.WHITE:
-                    eval += (330 + self.white_bishop_table[square])
+                    score += (330 + self.white_bishop_table[square])
                 else:
-                    eval -= (330 + self.black_bishop_table[square])    
+                    score -= (330 + self.black_bishop_table[square])    
             elif piece.piece_type == chess.ROOK:
                 if piece.color == chess.WHITE:
-                    eval += (500 + self.white_rook_table[square])
+                    score += (500 + self.white_rook_table[square])
                 else:
-                    eval -= (500 + self.black_rook_table[square])
+                    score -= (500 + self.black_rook_table[square])
             elif piece.piece_type == chess.QUEEN:
                 if piece.color == chess.WHITE:
-                    eval += (900 + self.white_queen_table[square])
+                    score += (900 + self.white_queen_table[square])
                 else:
-                    eval -= (900 + self.black_queen_table[square])    
+                    score -= (900 + self.black_queen_table[square])    
             elif piece.piece_type == chess.KING and piece.color == chess.WHITE:
-                eval += (self.white_king_table[square] + 20000)
+                score += (self.white_king_table[square] + 20000)
             elif piece.piece_type == chess.KING and piece.color == chess.BLACK:
-                eval -= (self.black_king_table[square] + 20000)
-        # King Safety Evaluation
-        ### ONLY WORKS IN GAME, NOT A SEPARATE ANALYSIS
-        if not self.endgame:
+                score -= (self.black_king_table[square] + 20000)
+        # King Safety score
+        ### NOTE: ONLY WORKS IN GAME, NOT AN ANALYSIS
+        if not self.is_endgame:
             white_castle, black_castle = self.castled[0], self.castled[1]
             # if white castled
             if white_castle == 0:
-                eval -= 30
+                score -= 15
             elif white_castle == 1: # kingside
                 for square in [chess.F2, chess.G2, chess.H2]:
-                    if pm.get(square, None): 
-                        if pm[square].piece_type == chess.PAWN:
-                            eval += 40
+                    if piece_map.get(square, None): 
+                        if piece_map[square].piece_type == chess.PAWN:
+                            score += 40
                 for square in [chess.F3, chess.G3, chess.H3]:
-                    if pm.get(square, None): 
-                        if pm[square].piece_type == chess.PAWN:
-                            eval += 20    
+                    if piece_map.get(square, None): 
+                        if piece_map[square].piece_type == chess.PAWN:
+                            score += 20    
             elif white_castle == 2: # queenside
                 for square in [chess.A2, chess.B2, chess.C2]:
-                    if pm.get(square, None): # if there's a piece at the square
-                        if pm[square].piece_type == chess.PAWN:
-                            eval += 40
+                    if piece_map.get(square, None): # if there's a piece at the square
+                        if piece_map[square].piece_type == chess.PAWN:
+                            score += 40
                 for square in [chess.A3, chess.B3, chess.C3]:
-                    if pm.get(square, None): 
-                        if pm[square].piece_type == chess.PAWN:
-                            eval += 20     
+                    if piece_map.get(square, None): 
+                        if piece_map[square].piece_type == chess.PAWN:
+                            score += 20     
             # if blacked castled
             if black_castle == 0:
-                eval += 30
+                score += 15
             elif black_castle == 1: # kingside
                 for square in [chess.F7, chess.G7, chess.H7]:
-                    if pm.get(square, None): 
-                        if pm[square].piece_type == chess.PAWN:
-                            eval -= 40
+                    if piece_map.get(square, None): 
+                        if piece_map[square].piece_type == chess.PAWN:
+                            score -= 40
                 for square in [chess.F6, chess.G6, chess.H6]:
-                    if pm.get(square, None): 
-                        if pm[square].piece_type == chess.PAWN:
-                            eval -= 20    
+                    if piece_map.get(square, None): 
+                        if piece_map[square].piece_type == chess.PAWN:
+                            score -= 20    
             elif black_castle == 2: # queenside
                 for square in [chess.A7, chess.B7, chess.C7]:
-                    if pm.get(square, None): # if there's a piece at the square
-                        if pm[square].piece_type == chess.PAWN:
-                            eval -= 40
+                    if piece_map.get(square, None): # if there's a piece at the square
+                        if piece_map[square].piece_type == chess.PAWN:
+                            score -= 40
                 for square in [chess.A6, chess.B6, chess.C6]:
-                    if pm.get(square, None): 
-                        if pm[square].piece_type == chess.PAWN:
-                            eval -= 20        
-        return eval if self.board.turn else -eval
+                    if piece_map.get(square, None): 
+                        if piece_map[square].piece_type == chess.PAWN:
+                            score -= 20        
+        return score if self.board.turn else -score
 
     def alphabeta(self, alpha, beta, depth):
-        hashf = HASH_ALPHA
+        zobrist_key = self.compute_zobrist_hash()
+        if zobrist_key in self.transposition_table and self.transposition_table[zobrist_key].depth >= depth:
+            entry = self.transposition_table[zobrist_key]
+            if entry.flag == HASH_EXACT:
+                return entry.value
+            elif entry.flag == HASH_ALPHA and entry.value <= alpha:
+               return alpha
+            elif entry.flag == HASH_BETA and entry.value >= beta:
+                return beta
+
         # check for checkmate/draw
         if self.board.is_game_over(): 
             if self.board.is_check():
-                eval = -30000
-                print(self.board)
-                print(eval)
-                self.record_hash(eval, HASH_EXACT, depth)
-                print(self.transposition_table[self.zobrist_hash()])
-                return eval
-            return 0  
+                self.record_hash(zobrist_key, END_DEPTH, -30000, HASH_EXACT, None)
+                return -30000
+            self.record_hash(zobrist_key, END_DEPTH, 0, HASH_EXACT, None)
+            return 0
         if self.board.can_claim_draw():
+            self.record_hash(zobrist_key, END_DEPTH, 0, HASH_EXACT, None)
             return 0
         
-        ev = self.probe_hash(alpha, beta, depth)
-        if ev:
-            zh = self.zobrist_hash()
-            if self.transposition_table[zh][1] == HASH_ALPHA:
-                alpha = ev
-            elif self.transposition_table[zh][1] == HASH_BETA:
-                beta = ev
-            else:
-                return ev
-        # Transposition Table
-        if depth == 0: 
-            eval = self.quiescence_search(alpha, beta)
-            self.record_hash(eval, HASH_EXACT, depth)
-            return eval
+        if depth == 0:
+            return self.quiescence_search(alpha, beta)
+    
+        best_move = None
+        best_score = -30000
         moves = self.order_moves(self.board.legal_moves)
-        if depth == self.depth:
-            self.best_move = moves[0]
+
         for move in moves:
             self._check_castling(move)
             self.board.push(move)
-            eval = -1 * self.alphabeta(-beta, -alpha, depth-1)
-            if abs(eval) > 15000: # mate founded
-                if eval > 0:
-                    eval -= 1000
-                else:
-                    eval += 1000
-
-            self._uncheck_castling(move)
+            score = -self.alphabeta(-beta, -alpha, depth-1)
             self.board.pop()
-            if eval >= beta: 
-                self.record_hash(beta, HASH_BETA, depth)
+            self._uncheck_castling(move)
+
+            # Ranking quicker mates higher
+            if abs(score) >= 20000:
+                if score > 0:
+                    score -= 1000
+                else:
+                    score += 1000
+            
+            if score >= beta: 
+                self.record_hash(zobrist_key, depth, beta, HASH_BETA, move)
                 return beta
-            if eval > alpha: 
+            if score > best_score: 
+                best_score = score
+                best_move = move
                 if depth == self.depth:
-                    self.best_move = move
-                hashf = HASH_EXACT
-                alpha = eval
-        self.record_hash(alpha, hashf, depth)
+                    self.best_move = best_move
+            alpha = max(alpha, score)
+        
+        if best_score <= alpha:
+            self.record_hash(zobrist_key, depth, best_score, HASH_ALPHA, best_move)
+        else: 
+            self.record_hash(zobrist_key, depth, best_score, HASH_EXACT, best_move)
         return alpha
 
     # TODO: need to deal with CHECK horizon effects..?
     # TODO: does this need check uncheck castling?
     def quiescence_search(self, alpha, beta):
-        stand_pat = self.evaluate()
-        if stand_pat >= beta: return beta
-        if stand_pat > alpha: alpha = stand_pat
-        for capture in self.order_moves(self.board.generate_legal_captures()):
+        zobrist_key = self.compute_zobrist_hash()
+        # if known position that has been searched deep
+        if zobrist_key in self.transposition_table and self.transposition_table[zobrist_key].depth >= 0:
+            entry = self.transposition_table[zobrist_key]
+            if entry.flag == HASH_EXACT:
+                return entry.value
+            elif entry.flag == HASH_ALPHA and entry.value <= alpha:
+                return alpha
+            elif entry.flag == HASH_BETA and entry.value >= beta:
+                return beta
+
+        stand_pat = self.get_score()
+        if stand_pat >= beta:
+            self.record_hash(zobrist_key, 0, beta, HASH_BETA, None)
+            return beta
+        if stand_pat > alpha: 
+            alpha = stand_pat
+
+        captures = self.order_moves(self.board.generate_legal_captures())
+        for capture in captures:
             self.board.push(capture)
-            eval = -1 * self.quiescence_search(-beta, -alpha)
+            score = -self.quiescence_search(-beta, -alpha)
             self.board.pop()
-            if eval >= beta: return beta
-            alpha = max(alpha, eval)
+
+            if score >= beta: 
+                self.record_hash(zobrist_key, 0, beta, HASH_BETA, None)
+                return beta
+            if score > alpha:
+                alpha = score
+        self.record_hash(zobrist_key, 0, alpha, HASH_EXACT, None)
         return alpha
     
     # Given a list of moves, return it after ordering it from most significant to least
@@ -278,7 +312,7 @@ class ChessEngine:
         return list(sorted_orders.keys())
     
     def check_endgame(self):
-        if not self.endgame:
+        if not self.is_endgame:
             queen_num = 0
             rook_num = 0
             minor_piece_num = 0
@@ -294,7 +328,7 @@ class ChessEngine:
                     minor_piece_num += 1
 
             if queen_num == 0 and minor_piece_num + rook_num <= 4:
-                self.endgame = True
+                self.is_endgame = True
                 self.white_king_table = [
                     -50,-30,-30,-30,-30,-30,-30,-50,
                     -30,-30,  0,  0,  0,  0,-30,-30,
@@ -308,7 +342,7 @@ class ChessEngine:
                 self.black_king_table = self.white_king_table[::-1]
 
     def check_super_endgame(self):
-        if self.endgame: 
+        if self.is_endgame: 
             if self.depth < 8:
                 if len(self.board.piece_map().keys()) <= 6:
                     self.set_depth(8)
@@ -319,7 +353,7 @@ class ChessEngine:
     #     if self.endgame:
     #         piece_num = len(self.board.piece_map())
             
-    def zobrist_hash(self):
+    def compute_zobrist_hash(self):
         """
         0-767: 0-11, 12-23, 24-35, 36-47...,756-767
                 a1     a2     a3     a4       h8
@@ -350,34 +384,20 @@ class ChessEngine:
         for sq, piece in self.board.piece_map().items():
             hash_code = piece.piece_type + 6 if piece.color else piece.piece_type
             hash_code += (sq * 12 - 1)
-            hashes ^= self.zh[hash_code]
+            hashes ^= self.compute_zobrist_hashing[hash_code]
         # 768
-        if not self.board.turn: hashes ^= self.zh[768]
+        if not self.board.turn: hashes ^= self.compute_zobrist_hashing[768]
         # 769-772
-        if self.board.has_kingside_castling_rights(chess.WHITE): hashes ^= self.zh[769]
-        if self.board.has_queenside_castling_rights(chess.WHITE): hashes ^= self.zh[770]
-        if self.board.has_kingside_castling_rights(chess.BLACK): hashes ^= self.zh[771]
-        if self.board.has_queenside_castling_rights(chess.BLACK): hashes ^= self.zh[772]
+        if self.board.has_kingside_castling_rights(chess.WHITE): hashes ^= self.compute_zobrist_hashing[769]
+        if self.board.has_queenside_castling_rights(chess.WHITE): hashes ^= self.compute_zobrist_hashing[770]
+        if self.board.has_kingside_castling_rights(chess.BLACK): hashes ^= self.compute_zobrist_hashing[771]
+        if self.board.has_queenside_castling_rights(chess.BLACK): hashes ^= self.compute_zobrist_hashing[772]
         # 773-780
-        if self.board.ep_square: hashes ^= self.zh[773 + chess.square_file(self.board.ep_square)]
+        if self.board.ep_square: hashes ^= self.compute_zobrist_hashing[773 + chess.square_file(self.board.ep_square)]
         return hashes 
-    
-    def probe_hash(self, alpha, beta, depth):
-        hash = self.zobrist_hash()
-        if hash in self.transposition_table:
-            if self.transposition_table[hash][0] >= depth:
-                if self.transposition_table[hash][1] == HASH_EXACT:
-                    return self.transposition_table[hash][2]
-                elif self.transposition_table[hash][1] == HASH_ALPHA and (self.transposition_table[hash][2] <= alpha):
-                    return alpha
-                elif self.transposition_table[hash][1] == HASH_BETA and (self.transposition_table[hash][2] >= beta):
-                    return beta
 
-    def record_hash(self, eval, hashf, depth):
-        hash = self.zobrist_hash()
-        self.transposition_table[hash] = [depth]
-        self.transposition_table[hash].append(hashf)
-        self.transposition_table[hash].append(eval)
+    def record_hash(self, key, depth, value, flag, best_move):
+        self.transposition_table[key] = TranspositionEntry(key, depth, value, flag, best_move)
 
     def print_board(self):
         for rank in range(7,-1,-1):
