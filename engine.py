@@ -154,20 +154,20 @@ class ChessEngine:
                 for square in [chess.F2, chess.G2, chess.H2]:
                     if piece_map.get(square, None): 
                         if piece_map[square].piece_type == chess.PAWN:
-                            score += 40
+                            score += 5
                 for square in [chess.F3, chess.G3, chess.H3]:
                     if piece_map.get(square, None): 
                         if piece_map[square].piece_type == chess.PAWN:
-                            score += 20    
+                            score += 3    
             elif white_castle == 2: # queenside
                 for square in [chess.A2, chess.B2, chess.C2]:
                     if piece_map.get(square, None): # if there's a piece at the square
                         if piece_map[square].piece_type == chess.PAWN:
-                            score += 40
+                            score += 5
                 for square in [chess.A3, chess.B3, chess.C3]:
                     if piece_map.get(square, None): 
                         if piece_map[square].piece_type == chess.PAWN:
-                            score += 20     
+                            score += 3    
             # if blacked castled
             if black_castle == 0:
                 score += 15
@@ -175,20 +175,20 @@ class ChessEngine:
                 for square in [chess.F7, chess.G7, chess.H7]:
                     if piece_map.get(square, None): 
                         if piece_map[square].piece_type == chess.PAWN:
-                            score -= 40
+                            score -= 5
                 for square in [chess.F6, chess.G6, chess.H6]:
                     if piece_map.get(square, None): 
                         if piece_map[square].piece_type == chess.PAWN:
-                            score -= 20    
+                            score -= 3  
             elif black_castle == 2: # queenside
                 for square in [chess.A7, chess.B7, chess.C7]:
                     if piece_map.get(square, None): # if there's a piece at the square
                         if piece_map[square].piece_type == chess.PAWN:
-                            score -= 40
+                            score -= 5
                 for square in [chess.A6, chess.B6, chess.C6]:
                     if piece_map.get(square, None): 
                         if piece_map[square].piece_type == chess.PAWN:
-                            score -= 20        
+                            score -= 3       
         return score if self.board.turn else -score
 
     def alphabeta(self, alpha, beta, depth):
@@ -233,7 +233,7 @@ class ChessEngine:
                     score -= 1000
                 else:
                     score += 1000
-            
+
             if score >= beta: 
                 self.record_hash(zobrist_key, depth, beta, HASH_BETA, move)
                 return beta
@@ -243,7 +243,6 @@ class ChessEngine:
                 if depth == self.depth:
                     self.best_move = best_move
             alpha = max(alpha, score)
-        
         if best_score <= alpha:
             self.record_hash(zobrist_key, depth, best_score, HASH_ALPHA, best_move)
         else: 
@@ -264,16 +263,32 @@ class ChessEngine:
             elif entry.flag == HASH_BETA and entry.value >= beta:
                 return beta
 
-        stand_pat = self.get_score()
-        if stand_pat >= beta:
-            self.record_hash(zobrist_key, 0, beta, HASH_BETA, None)
-            return beta
-        if stand_pat > alpha: 
-            alpha = stand_pat
+        # check for checkmate/draw
+        if self.board.is_game_over(): 
+            if self.board.is_check():
+                self.record_hash(zobrist_key, END_DEPTH, -30000, HASH_EXACT, None)
+                return -30000
+            self.record_hash(zobrist_key, END_DEPTH, 0, HASH_EXACT, None)
+            return 0
+        if self.board.can_claim_draw():
+            self.record_hash(zobrist_key, END_DEPTH, 0, HASH_EXACT, None)
+            return 0
+        
+        if not self.board.is_check():
+            stand_pat = self.get_score()
+            if stand_pat >= beta:
+                self.record_hash(zobrist_key, 0, beta, HASH_BETA, None)
+                return beta
+            if stand_pat > alpha: 
+                alpha = stand_pat
+        
+        if self.board.is_check():
+            moves = self.order_moves(self.board.generate_legal_moves())
+        else:
+            moves = self.order_moves(self.board.generate_legal_captures())
 
-        captures = self.order_moves(self.board.generate_legal_captures())
-        for capture in captures:
-            self.board.push(capture)
+        for move in moves:
+            self.board.push(move)
             score = -self.quiescence_search(-beta, -alpha)
             self.board.pop()
 
@@ -437,3 +452,4 @@ class ChessEngine:
                 self.castled[int(not self.board.turn)] = 0
             else:
                 self.castled[int(not self.board.turn)] = 0
+
