@@ -41,7 +41,7 @@ When 5 or fewer pieces remain, the engine switches from search to a Syzygy table
 
 <img width="371" alt="Engine interface" src="https://user-images.githubusercontent.com/65887459/195190432-237af847-eb06-470a-b137-998602af5803.png">
 
-**Memorable Game: Bg4!!**
+**Memorable Move: Bg4!!**
 
 <img width="537" alt="Bg4 pin" src="https://user-images.githubusercontent.com/65887459/195191252-6f27116e-54af-4926-bcd9-2b00b88b821c.png">
 
