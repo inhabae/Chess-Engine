@@ -1,27 +1,48 @@
-# Chess-Engine
-A Python-based Chess engine that has a rating equivalent to 1350 on chess.com in rapid format. It has proven itself to be capable of beating higher-rated players around 1500.
+# Chess Engine
 
-# Features
-Alpha Beta Pruning
-* Assessing alpha and beta in a given position, the engine disregards branches that the opponent is likely not to choose, which decreases the number of branches the engine considers.
+A Python-based chess engine rated approximately **1350 on Chess.com** (rapid), with wins recorded against players up to 1500.
 
-Quiscence Search
-* The engine keeps on searching until there is no "good captures" or "checks", which tries to mitigate the horizon effect. For example, when the engine can look ahead one half-move it thinks that queen capturing a protected pawn is a good move. However, the move is indeed a bad one, as the queen will be captured very next move. 
+## Features
 
-Move Ordering
-* The engine orders given moves prior to evaluation, which significantly enhances the performance of alpha beta pruning.
-* Moves such as good captures, promotions, and checks are given a higher point.
+### Alpha-Beta Pruning
+Prunes branches the opponent is unlikely to take, dramatically reducing the search tree and enabling deeper lookahead within the same time budget.
 
-Assign Positional Values to Pieces
-* The engine gives a higher evaluation if the player's pieces are positoned well. The engine uses different tables for different pieces; for example, a mobile knight on e4 (center) gains 20 points whereas an inactive knight on a1 (corner) loses 50 material points.
+### Quiescence Search
+Extends the search beyond the fixed depth whenever captures or checks remain on the board, mitigating the horizon effect. Without this, the engine might incorrectly evaluate a queen capturing a protected pawn as good — only to have the queen lost on the very next move.
 
-Syzygy Endgame
-* Once there are only 5 pieces left on the board, the engine uses a tablebase endgame to play the best precalculated moves to ensure the maximum chances to win or draw.
+### Move Ordering
+Moves are scored and sorted before evaluation to maximize alpha-beta pruning efficiency. Good captures (via MVV/LVA), promotions, and checks are prioritized, while moves into pawn-attacked squares are penalized.
 
-# How It Looks
-<img width="371" alt="Screen Shot 2022-10-11 at 1 19 48 PM" src="https://user-images.githubusercontent.com/65887459/195190432-237af847-eb06-470a-b137-998602af5803.png">
+### Piece-Square Tables
+Each piece type is assigned positional bonuses based on its square, drawn from the [Simplified Evaluation Function](https://www.chessprogramming.org/Simplified_Evaluation_Function). A knight on e4 (center) gains +20, while one on a1 (corner) loses 50 points. Separate tables exist for middlegame and endgame king positioning.
 
-# Memorable Move
-<img width="537" alt="Screen Shot 2022-10-11 at 1 24 17 PM" src="https://user-images.githubusercontent.com/65887459/195191252-6f27116e-54af-4926-bcd9-2b00b88b821c.png">
+### Transposition Table (Zobrist Hashing)
+Positions are hashed using Zobrist hashing and cached in a transposition table. Previously evaluated positions at sufficient depth are retrieved directly, avoiding redundant computation. Nodes are stored as exact, alpha-bound, or beta-bound entries.
 
-* Bg4!! pins White rook to queen, winning an exchange. Opponent (1224) took the bishop with his h-pawn, and the engine immediately played Qh1, delivering a cold checkmate.
+### King Safety
+Rewards castling and bonuses pawns sheltering the king on f2/g2/h2 (kingside) or a2/b2/c2 (queenside). Uncastled kings are penalized.
+
+### Syzygy Endgame Tablebases
+When 5 or fewer pieces remain, the engine switches from search to a Syzygy tablebase lookup, guaranteeing optimal play in all supported endgame positions.
+
+## Architecture
+
+| File | Description |
+|---|---|
+| `engine.py` | Core engine: evaluation, alpha-beta, quiescence search, move ordering, Zobrist hashing |
+| `game.py` | Human vs. engine interface |
+| `communicator.py` | Engine vs. engine match runner |
+| `engine_test.py` | Unit tests for evaluation and search correctness |
+| `engine_2022.py` | Earlier engine version (no transposition table) |
+
+## Screenshots
+
+**Interface**
+
+<img width="371" alt="Engine interface" src="https://user-images.githubusercontent.com/65887459/195190432-237af847-eb06-470a-b137-998602af5803.png">
+
+**Memorable Game: Bg4!!**
+
+<img width="537" alt="Bg4 pin" src="https://user-images.githubusercontent.com/65887459/195191252-6f27116e-54af-4926-bcd9-2b00b88b821c.png">
+
+The engine finds **Bg4!!**, pinning White's rook to the queen and winning the exchange. After the opponent captured with hxg4, the engine played **Qh1#** — checkmate.
